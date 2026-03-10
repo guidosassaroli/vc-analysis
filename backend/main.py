@@ -114,19 +114,48 @@ def _make_startup(data: dict) -> Startup:
     return Startup(**{k: v for k, v in data.items() if k in _STARTUP_FIELDS})
 
 
+# ─── User startup persistence ─────────────────────────────────────────────────
+
+USER_STARTUPS_PATH = os.path.join(os.path.dirname(__file__), "user_startups.json")
+
+
+def _load_user_startups() -> list[dict]:
+    if not os.path.exists(USER_STARTUPS_PATH):
+        return []
+    try:
+        with open(USER_STARTUPS_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def _save_user_startup(data: dict):
+    startups = _load_user_startups()
+    if any(s.get("website") == data.get("website") for s in startups):
+        return
+    startups.append(data)
+    with open(USER_STARTUPS_PATH, "w") as f:
+        json.dump(startups, f, indent=2, ensure_ascii=False)
+
+
 def _seed_if_empty():
     """Populate DB with seed startups on first run."""
     with Session(__import__("database").engine) as session:
         existing = session.exec(select(Startup).where(Startup.source == "seed")).first()
-        if existing:
-            return
+        if not existing:
+            print("[Seed] Inserting seed startups...")
+            for data in SEED_STARTUPS:
+                session.add(_make_startup(data))
+            session.commit()
+            print(f"[Seed] Inserted {len(SEED_STARTUPS)} mock startups.")
 
-        print("[Seed] Inserting seed startups...")
-        for data in SEED_STARTUPS:
-            startup = _make_startup(data)
-            session.add(startup)
+        # Re-add any user-added startups that are missing (e.g. after a DB wipe)
+        for data in _load_user_startups():
+            website = data.get("website")
+            if website and session.exec(select(Startup).where(Startup.website == website)).first():
+                continue
+            session.add(_make_startup(data))
         session.commit()
-        print(f"[Seed] Inserted {len(SEED_STARTUPS)} mock startups.")
 
 
 # ─── Routes ──────────────────────────────────────────────────────────────────
@@ -208,6 +237,7 @@ async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_
     startup = _make_startup(startup_data)
     session.add(startup)
     session.commit()
+    _save_user_startup(startup_data)
     session.refresh(startup)
     return startup
 
@@ -356,7 +386,7 @@ async def refresh_feed(session: Session = Depends(get_session)):
 
 @app.post("/api/reset")
 def reset_database(session: Session = Depends(get_session)):
-    """Delete all startups and re-seed from seed_data."""
+    """Delete all startups and re-seed from seed_data + user_startups.json."""
     all_startups = session.exec(select(Startup)).all()
     for startup in all_startups:
         session.delete(startup)
@@ -365,9 +395,14 @@ def reset_database(session: Session = Depends(get_session)):
     for data in SEED_STARTUPS:
         session.add(_make_startup(data))
 
+    user_startups = _load_user_startups()
+    for data in user_startups:
+        session.add(_make_startup(data))
+
     session.commit()
 
-    return {"cleared": len(all_startups), "seeded": len(SEED_STARTUPS), "message": f"Cleared {len(all_startups)} entries, re-seeded {len(SEED_STARTUPS)} startups."}
+    total = len(SEED_STARTUPS) + len(user_startups)
+    return {"cleared": len(all_startups), "seeded": total, "message": f"Cleared {len(all_startups)} entries, re-seeded {len(SEED_STARTUPS)} curated + {len(user_startups)} user-added startups."}
 
 
 @app.post("/api/score-all")

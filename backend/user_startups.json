@@ -1,0 +1,24 @@
+[
+  {
+    "name": "Mistral AI",
+    "description": "Mistral AI provides cutting-edge AI models and platforms for organizations to build custom AI systems, agents, and applications with full data control.",
+    "sector": "AI/ML",
+    "stage": "Unknown",
+    "country": "France",
+    "founders": null,
+    "website": "https://mistral.ai",
+    "source": "manual",
+    "hn_url": "https://mistral.ai/it"
+  },
+  {
+    "name": "Alice & Bob",
+    "description": "Alice & Bob builds fault-tolerant quantum computers using Cat Qubits, a qubit design with built-in error correction to reduce decoherence.",
+    "sector": "Quantum",
+    "stage": "Unknown",
+    "country": "France",
+    "founders": null,
+    "website": "https://alice-bob.com/",
+    "source": "manual",
+    "hn_url": "https://alice-bob.com/"
+  }
+]

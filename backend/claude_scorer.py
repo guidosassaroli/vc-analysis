@@ -51,7 +51,7 @@ Respond with JSON in exactly this format:
 
 MEMO_SYSTEM = """You are a senior investment analyst at Elaia writing internal due diligence memos.
 Write concise, analytical, and insightful content. Be direct and honest about both opportunities and risks.
-Always respond with valid JSON only."""
+Each section must be exactly 1-2 sentences — no more. Always respond with valid JSON only."""
 
 MEMO_PROMPT = """Write a due diligence memo for this startup being considered by Elaia.
 
@@ -66,14 +66,14 @@ Fit Score: {fit_score}/100
 Score Rationale: {rationale}
 Red Flag: {red_flag}
 
-Write a structured memo in this JSON format (2-3 sentences per section):
+Write a structured memo in this JSON format. Each value must be 1-2 sentences only — be direct and specific:
 {{
-  "problem": "<market problem and pain point the startup addresses>",
-  "solution": "<technical approach and unique value proposition>",
-  "team": "<assessment of founding team credentials, relevant experience, and gaps>",
-  "traction": "<current traction, milestones, customers, revenue, and market validation>",
-  "elaia_fit": "<specific alignment with Elaia's thesis, portfolio synergies, and why Elaia is the right investor>",
-  "red_flags": "<key risks, concerns, and open diligence questions>"
+  "problem": "<market problem and pain point — 1-2 sentences>",
+  "solution": "<technical approach and unique value proposition — 1-2 sentences>",
+  "team": "<founding team credentials, experience, and gaps — 1-2 sentences>",
+  "traction": "<current traction, customers, revenue, market validation — 1-2 sentences>",
+  "elaia_fit": "<alignment with Elaia's thesis and why Elaia is the right investor — 1-2 sentences>",
+  "red_flags": "<top 2 risks or open diligence questions — 1-2 sentences>"
 }}"""
 
 
@@ -168,7 +168,7 @@ def generate_memo(startup_data: dict) -> dict:
     try:
         message = client.messages.create(
             model=MODEL,
-            max_tokens=1200,
+            max_tokens=2048,
             system=MEMO_SYSTEM,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -186,12 +186,12 @@ def generate_memo(startup_data: dict) -> dict:
             }
 
         return {
-            "memo_problem": parsed.get("problem", "")[:600],
-            "memo_solution": parsed.get("solution", "")[:600],
-            "memo_team": parsed.get("team", "")[:600],
-            "memo_traction": parsed.get("traction", "")[:600],
-            "memo_elaia_fit": parsed.get("elaia_fit", "")[:600],
-            "memo_red_flags": parsed.get("red_flags", "")[:600],
+            "memo_problem": parsed.get("problem", ""),
+            "memo_solution": parsed.get("solution", ""),
+            "memo_team": parsed.get("team", ""),
+            "memo_traction": parsed.get("traction", ""),
+            "memo_elaia_fit": parsed.get("elaia_fit", ""),
+            "memo_red_flags": parsed.get("red_flags", ""),
         }
 
     except Exception as e:

@@ -6,24 +6,29 @@ A full-stack VC deal flow intelligence tool that fetches startups from public so
 
 ```
 vc-dealflow/
-├── backend/          # Python + FastAPI + SQLite
-│   ├── main.py       # API routes & PDF export
-│   ├── models.py     # SQLModel database models
-│   ├── database.py   # SQLite engine setup
-│   ├── seed_data.py  # 15 curated deep tech startups
-│   ├── hn_fetcher.py # HackerNews Algolia API integration
-│   ├── claude_scorer.py  # Claude AI scoring & memo generation
+├── backend/                  # Python + FastAPI
+│   ├── main.py               # API routes & PDF export
+│   ├── models.py             # SQLModel database models
+│   ├── database.py           # DB engine (SQLite or Supabase PostgreSQL)
+│   ├── seed_data.py          # Curated deep tech startups
+│   ├── user_startups.json    # Persisted manually-added startups (auto-generated)
+│   ├── claude_scorer.py      # Claude AI scoring & memo generation
+│   ├── sources/
+│   │   ├── hn.py             # HackerNews Algolia API integration
+│   │   ├── github.py         # GitHub Search API integration
+│   │   └── rss.py            # EU startup RSS feeds (tech.eu, TechCrunch Europe)
 │   └── requirements.txt
-└── frontend/         # React + Vite + Tailwind CSS
+└── frontend/                 # React + Vite + Tailwind CSS
     └── src/
         ├── App.jsx
         ├── api.js
         └── components/
-            ├── Header.jsx       # Nav + action buttons
-            ├── StatsBar.jsx     # Dashboard KPIs
-            ├── FilterBar.jsx    # Sector/stage/country/score filters
-            ├── StartupCard.jsx  # Individual startup card with score ring
-            ├── MemoModal.jsx    # Full DD memo modal
+            ├── Header.jsx          # Nav + action buttons
+            ├── StatsBar.jsx        # Dashboard KPIs
+            ├── FilterBar.jsx       # Sector/stage/country/source/score filters
+            ├── StartupCard.jsx     # Startup card with score ring
+            ├── MemoModal.jsx       # Full DD memo modal
+            ├── AddStartupModal.jsx # Add startup from URL modal
             └── LoadingOverlay.jsx
 ```
 
@@ -31,7 +36,9 @@ vc-dealflow/
 
 - Python 3.11+
 - Node.js 18+
-- An LLM API key 
+- Anthropic API key
+- (Optional) GitHub token for higher rate limits
+- (Optional) Supabase project for cloud persistence
 
 ## Setup
 
@@ -40,7 +47,7 @@ vc-dealflow/
 ```bash
 cd vc-dealflow
 cp .env.example .env
-# Edit .env and add your LLM_API_KEY
+# Edit .env — set ANTHROPIC_API_KEY and optionally DATABASE_URL
 ```
 
 ### 2. Backend
@@ -48,67 +55,90 @@ cp .env.example .env
 ```bash
 cd backend
 
-# Create virtual environment
 python -m venv venv
 source venv/bin/activate   # Linux/macOS
 # venv\Scripts\activate    # Windows
 
-# Install dependencies
 pip install -r requirements.txt
 
-# Start the API server
 uvicorn main:app --reload --port 8000
 ```
 
-The API will be available at `http://localhost:8000`.
-Interactive docs: `http://localhost:8000/docs`
+API available at `http://localhost:8000` · Interactive docs: `http://localhost:8000/docs`
 
 ### 3. Frontend
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start the dev server (proxies /api to localhost:8000)
 npm run dev
 ```
 
-The dashboard will be available at `http://localhost:5173`.
+Dashboard available at `http://localhost:5173`.
+
+### 4. Quick start (both at once)
+
+```bash
+./start.sh
+```
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for scoring and memo generation |
+| `ANTHROPIC_MODEL` | No | Claude model to use (default: `claude-sonnet-4-6`) |
+| `DATABASE_URL` | No | Database connection string (default: local SQLite) |
+| `GITHUB_TOKEN` | No | GitHub personal access token for higher API rate limits |
+
+**Database options:**
+
+```bash
+# Local SQLite (default — no setup needed)
+DATABASE_URL=sqlite:///./dealflow.db
+
+# Supabase PostgreSQL (cloud — persists across restarts and machines)
+# Get from: Supabase dashboard → Project Settings → Database → Connection string (Transaction pooler, port 6543)
+DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+```
 
 ## First Run
 
-1. The backend automatically seeds 15 curated deep tech startups on first launch
+1. The backend automatically seeds curated deep tech startups on first launch
 2. Open `http://localhost:5173`
 3. Click **"Score All"** to score all seeded startups (~30–60 seconds)
-4. Click **"View Memo"** on any high-scoring startup to generate a full DD memo
-5. Use **"Refresh Feed"** to fetch new "Show HN" posts from HackerNews
-6. Use **"Export PDF"** to download the top 10 opportunities as a formatted report
+4. Click **"View Memo"** on any scored startup to generate a full DD memo
+5. Click **"Add Startup"** to add any company by pasting its website URL
+6. Use **"Fetch Sources"** to pull new startups from HackerNews, GitHub, and EU news
+7. Use **"Export PDF"** to download the top 10 opportunities as a formatted report
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/startups` | List startups (supports `?sector=AI/ML&stage=Seed&country=France&min_score=70`) |
+| GET | `/api/startups` | List startups (supports `?sector=AI/ML&stage=Seed&country=France&min_score=70&source=manual`) |
 | GET | `/api/startups/{id}` | Get a single startup |
+| POST | `/api/startups/from-url` | Add a startup by URL — fetches page, extracts info with Claude, deduplicates |
 | POST | `/api/startups/{id}/score` | Score + generate memo for one startup |
 | POST | `/api/startups/{id}/memo` | Regenerate DD memo for one startup |
-| POST | `/api/refresh` | Fetch new HN posts and score them |
+| POST | `/api/refresh` | Fetch new startups from HN, GitHub, and RSS feeds |
 | POST | `/api/score-all` | Score all unscored startups |
+| POST | `/api/reset` | Clear all startups and re-seed (curated + user-added) |
 | GET | `/api/stats` | Dashboard statistics |
 | GET | `/api/export/pdf` | Download top 10 as PDF |
 | GET | `/api/health` | Health check |
 
 ## Features
 
-- **AI Scoring** — Each startup receives a 0–100 Elaia Fit Score, a 2-sentence rationale, and an identified red flag (if any), generated by Claude
-- **DD Memos** — On-demand, structured due diligence memos with Problem / Solution / Team / Traction / Elaia Fit / Red Flags sections
-- **Score Caching** — Scores and memos are stored in SQLite; Claude is only called once per startup (or on explicit rescore)
-- **Live HN Feed** — Fetches "Show HN" startup posts from the HackerNews Algolia API, filtered and classified automatically
-- **PDF Export** — Downloads a formatted, Elaia-branded PDF report of the top 10 opportunities
-- **Advanced Filters** — Filter by sector, stage, country, source (curated vs HN), and minimum fit score
+- **AI Scoring** — Each startup gets a 0–100 Elaia Fit Score, a rationale, and a red flag (if any), generated by Claude
+- **DD Memos** — Structured due diligence memos with Problem / Solution / Team / Traction / Elaia Fit / Red Flags sections
+- **Add from URL** — Paste any startup's website URL; Claude extracts name, sector, stage, country, and founders automatically
+- **Multi-source Feed** — Fetches from HackerNews ("Show HN"), GitHub Search, and EU startup news (tech.eu, TechCrunch Europe)
+- **Cloud Persistence** — Connect Supabase to persist all data across restarts and machines
+- **PDF Export** — Elaia-branded PDF report of the top 10 opportunities
+- **Advanced Filters** — Filter by sector, stage, country, source (curated / HN / GitHub / News / Added), and minimum fit score
 - **Full-text Search** — Search across names, descriptions, founders, and sectors
+- **Score Caching** — Scores and memos are stored in the DB; Claude is only called once per startup (or on explicit rescore)
 
 ## Scoring Thesis (Elaia)
 
@@ -116,7 +146,7 @@ The dashboard will be available at `http://localhost:5173`.
 - Geography: France, Spain, Israel, Germany
 - Sectors: AI/ML, Quantum, Biotech, Cybersecurity, Climate Tech, Semiconductors
 - Stage: Pre-Seed, Seed, Series A
-- Team: PhD founders, university spinoffs, academic research background
+- Team: PhD founders, university spinoffs, academic research background (CNRS, INRIA, Fraunhofer, Unit 8200…)
 
 **Weak fit signals (−score):**
 - Pure SaaS with no deep tech differentiation
@@ -126,13 +156,15 @@ The dashboard will be available at `http://localhost:5173`.
 
 ## Customization
 
-- **Thesis prompt** — Edit `backend/claude_scorer.py` to modify scoring criteria
+- **Scoring thesis** — Edit `backend/claude_scorer.py` to modify scoring criteria and memo prompts
 - **Seed data** — Edit `backend/seed_data.py` to add or modify curated startups
 - **Claude model** — Set `ANTHROPIC_MODEL` in `.env` (default: `claude-sonnet-4-6`)
-- **Sectors/Countries** — Edit the filter options in `frontend/src/components/FilterBar.jsx`
+- **Sectors / Countries** — Edit filter options in `frontend/src/components/FilterBar.jsx`
 
 ## Cost Estimate
 
 Each startup scoring call uses ~500 input + ~150 output tokens.
 Each memo generation uses ~600 input + ~400 output tokens.
-At Sonnet 4.6 pricing, scoring + memo for all 15 seeds ≈ $0.05–$0.10.
+Each "Add from URL" extraction uses ~4,000 input + ~150 output tokens.
+
+At Sonnet 4.6 pricing, scoring + memo for all seeds ≈ $0.05–$0.10.
