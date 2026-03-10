@@ -1,6 +1,6 @@
-# Elaia Partners — Deal Flow Intelligence Dashboard
+# Elaia — Deal Flow Intelligence Dashboard
 
-A full-stack VC deal flow intelligence tool that fetches startups from public sources, scores them against Elaia Partners' investment thesis using Claude AI, and generates mini due diligence memos.
+A full-stack VC deal flow intelligence tool that fetches startups from public sources, scores them against Elaia's investment thesis, and generates mini due diligence memos.
 
 ## Architecture
 
@@ -81,7 +81,7 @@ The dashboard will be available at `http://localhost:5173`.
 
 1. The backend automatically seeds 15 curated deep tech startups on first launch
 2. Open `http://localhost:5173`
-3. Click **"Score All"** to score all seeded startups with Claude AI (~30–60 seconds)
+3. Click **"Score All"** to score all seeded startups (~30–60 seconds)
 4. Click **"View Memo"** on any high-scoring startup to generate a full DD memo
 5. Use **"Refresh Feed"** to fetch new "Show HN" posts from HackerNews
 6. Use **"Export PDF"** to download the top 10 opportunities as a formatted report
@@ -110,7 +110,7 @@ The dashboard will be available at `http://localhost:5173`.
 - **Advanced Filters** — Filter by sector, stage, country, source (curated vs HN), and minimum fit score
 - **Full-text Search** — Search across names, descriptions, founders, and sectors
 
-## Scoring Thesis (Elaia Partners)
+## Scoring Thesis (Elaia)
 
 **Strong fit signals (+score):**
 - Geography: France, Spain, Israel, Germany

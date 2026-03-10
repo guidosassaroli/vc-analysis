@@ -320,7 +320,7 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
               </div>
               <h3 className="font-semibold text-slate-700 mb-1">No memo yet</h3>
               <p className="text-sm text-slate-500 mb-5">
-                Generate a due diligence memo for this startup using Claude AI.
+                Generate a due diligence memo for this startup.
               </p>
               <button
                 onClick={handleGenerateMemo}

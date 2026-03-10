@@ -5,7 +5,7 @@ const SECTORS = [
   'Climate Tech', 'Semiconductors', 'Fintech', 'Industrial Robotics', 'Software',
 ]
 
-const STAGES = ['All', 'Pre-Seed', 'Seed', 'Series A', 'Series B', 'Early Stage']
+const STAGES = ['All', 'Pre-Seed', 'Seed', 'Series A', 'Series B', 'Early Stage', 'Unknown']
 
 const COUNTRIES = [
   'All', 'France', 'Germany', 'Spain', 'Israel',
@@ -18,6 +18,7 @@ const SOURCES = [
   { value: 'hn', label: 'HackerNews' },
   { value: 'github', label: 'GitHub' },
   { value: 'rss', label: 'News' },
+  { value: 'manual', label: 'Added' },
 ]
 
 const SearchIcon = () => (

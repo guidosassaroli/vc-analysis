@@ -7,6 +7,7 @@ import { SkeletonCard } from './components/LoadingOverlay'
 import { getStartups, getStats } from './api'
 
 const MemoModal = lazy(() => import('./components/MemoModal'))
+const AddStartupModal = lazy(() => import('./components/AddStartupModal'))
 
 const DEFAULT_FILTERS = {
   sector: 'All',
@@ -46,6 +47,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedStartup, setSelectedStartup] = useState(null)
+  const [showAddModal, setShowAddModal] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -107,11 +109,16 @@ export default function App() {
     getStats().then(setStats).catch(console.error)
   }, [])
 
+  const handleStartupAdded = useCallback((startup) => {
+    setAllStartups(prev => [startup, ...prev])
+    getStats().then(setStats).catch(console.error)
+  }, [])
+
   const handleReset = useCallback(() => setFilters(DEFAULT_FILTERS), [])
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header onRefresh={fetchData} onScoreAll={fetchData} onCleared={fetchData} />
+      <Header onRefresh={fetchData} onScoreAll={fetchData} onCleared={fetchData} onAdd={() => setShowAddModal(true)} />
 
       <main className="max-w-screen-2xl mx-auto px-6 py-8">
         {/* Stats Bar */}
@@ -190,8 +197,7 @@ export default function App() {
         {!loading && !error && (
           <div className="mt-12 pb-6 text-center text-xs text-slate-400">
             <p>
-              Elaia Partners Deal Flow Intelligence · Confidential internal tool
-              · Scoring powered by Claude AI
+              Elaia Deal Flow Intelligence · Confidential internal tool
             </p>
           </div>
         )}
@@ -204,6 +210,16 @@ export default function App() {
             startup={selectedStartup}
             onClose={() => setSelectedStartup(null)}
             onUpdated={handleStartupUpdated}
+          />
+        </Suspense>
+      )}
+
+      {/* Add Startup Modal */}
+      {showAddModal && (
+        <Suspense fallback={null}>
+          <AddStartupModal
+            onClose={() => setShowAddModal(false)}
+            onAdded={handleStartupAdded}
           />
         </Suspense>
       )}

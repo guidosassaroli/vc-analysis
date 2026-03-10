@@ -13,7 +13,7 @@ import anthropic
 
 MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
-SCORING_SYSTEM = """You are a senior investment analyst at Elaia Partners, a French deep tech venture capital firm with €850M AUM, investing across Paris, Barcelona, and Tel Aviv.
+SCORING_SYSTEM = """You are a senior investment analyst at Elaia, a French deep tech venture capital firm with €850M AUM, investing across Paris, Barcelona, and Tel Aviv.
 
 Elaia's investment thesis:
 STRONG FIT indicators:
@@ -32,7 +32,7 @@ WEAK FIT indicators:
 
 Always respond with valid JSON only. No markdown, no explanation outside the JSON."""
 
-SCORING_PROMPT = """Analyze this startup against Elaia Partners' investment thesis.
+SCORING_PROMPT = """Analyze this startup against Elaia's investment thesis.
 
 Startup:
 Name: {name}
@@ -49,11 +49,11 @@ Respond with JSON in exactly this format:
   "red_flag": "<one specific red flag, or null if none>"
 }}"""
 
-MEMO_SYSTEM = """You are a senior investment analyst at Elaia Partners writing internal due diligence memos.
+MEMO_SYSTEM = """You are a senior investment analyst at Elaia writing internal due diligence memos.
 Write concise, analytical, and insightful content. Be direct and honest about both opportunities and risks.
 Always respond with valid JSON only."""
 
-MEMO_PROMPT = """Write a due diligence memo for this startup being considered by Elaia Partners.
+MEMO_PROMPT = """Write a due diligence memo for this startup being considered by Elaia.
 
 Startup:
 Name: {name}

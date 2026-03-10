@@ -31,6 +31,7 @@ const SOURCE_BADGE = {
   'hn':     { label: 'HN',      class: 'bg-orange-100 text-orange-700 ring-1 ring-orange-200' },
   'github': { label: 'GitHub',  class: 'bg-purple-100 text-purple-700 ring-1 ring-purple-200' },
   'rss':    { label: 'News',    class: 'bg-sky-100 text-sky-700 ring-1 ring-sky-200' },
+  'manual': { label: 'Added',   class: 'bg-teal-100 text-teal-700 ring-1 ring-teal-200' },
 }
 
 const COUNTRY_FLAGS = {
@@ -198,7 +199,7 @@ function StartupCard({ startup, onViewMemo, onScored }) {
               </>
             ) : (
               <>
-                <BoltIcon /> Score with AI
+                <BoltIcon /> Score
               </>
             )}
           </button>

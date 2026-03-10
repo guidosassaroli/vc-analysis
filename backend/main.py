@@ -3,10 +3,14 @@ Elaia VC Deal Flow Intelligence — FastAPI Backend
 """
 
 import asyncio
+import json
 import os
+import re
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 from typing import Optional
 
+import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,6 +18,7 @@ load_dotenv()
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from database import create_db_and_tables, get_session
@@ -26,7 +31,7 @@ from claude_scorer import score_startup, generate_memo
 
 app = FastAPI(
     title="Elaia Deal Flow API",
-    description="VC Deal Flow Intelligence Dashboard for Elaia Partners",
+    description="VC Deal Flow Intelligence Dashboard for Elaia",
     version="1.0.0",
 )
 
@@ -46,6 +51,62 @@ def on_startup():
 
 
 _STARTUP_FIELDS = set(Startup.model_fields.keys()) if hasattr(Startup, "model_fields") else set(Startup.__fields__.keys())
+
+
+class FetchUrlRequest(BaseModel):
+    url: str
+
+
+class _TextExtractor(HTMLParser):
+    SKIP = {'script', 'style', 'noscript', 'nav', 'footer', 'head'}
+
+    def __init__(self):
+        super().__init__()
+        self._texts = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.SKIP:
+            self._skip_depth += 1
+
+    def handle_endtag(self, tag):
+        if tag in self.SKIP:
+            self._skip_depth = max(0, self._skip_depth - 1)
+
+    def handle_data(self, data):
+        if not self._skip_depth:
+            t = data.strip()
+            if t:
+                self._texts.append(t)
+
+    def get_text(self):
+        return re.sub(r'\s+', ' ', ' '.join(self._texts))
+
+
+def _extract_startup_info(url: str, text: str) -> dict:
+    import anthropic
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+    prompt = (
+        f"Extract startup info from this website content.\n"
+        f"URL: {url}\n"
+        f"Content: {text[:4000]}\n\n"
+        "Return JSON with these fields:\n"
+        '- name: company name (string)\n'
+        '- description: 1-2 sentence description of what the company does, max 200 chars, factual and concise\n'
+        '- sector: one of ["AI/ML","Biotech","Quantum","Cybersecurity","Climate Tech","Semiconductors","Fintech","Industrial Robotics","Software"]\n'
+        '- stage: one of ["Pre-Seed","Seed","Series A","Series B"] if mentioned, else null\n'
+        '- country: country where company is based, else null\n'
+        '- founders: founder names as a string, else null\n'
+        f'- website: canonical website URL (use {url} if unclear)\n\n'
+        "Return only valid JSON, no markdown."
+    )
+    response = client.messages.create(
+        model=model,
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return json.loads(response.content[0].text)
 
 
 def _make_startup(data: dict) -> Startup:
@@ -94,6 +155,61 @@ def list_startups(
 
     startups = session.exec(query.order_by(Startup.fit_score.desc().nullslast())).all()
     return startups
+
+
+@app.post("/api/startups/from-url", response_model=StartupRead)
+async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_session)):
+    """Fetch a startup's website, extract info with Claude, create and return it."""
+    url = req.url
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=15.0,
+            follow_redirects=True,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; ElaiaBot/1.0)"},
+        ) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            html = resp.text
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Could not fetch page: {e}")
+
+    extractor = _TextExtractor()
+    extractor.feed(html)
+    text = extractor.get_text()
+
+    if len(text) < 100:
+        raise HTTPException(status_code=422, detail="Not enough text content on page")
+
+    loop = asyncio.get_event_loop()
+    try:
+        info = await loop.run_in_executor(None, _extract_startup_info, url, text)
+    except (json.JSONDecodeError, KeyError, IndexError) as e:
+        raise HTTPException(status_code=422, detail=f"Could not parse startup info: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Info extraction failed: {e}")
+
+    website = info.get("website") or url
+    existing = session.exec(select(Startup).where(Startup.website == website)).first()
+    if existing:
+        return existing
+
+    startup_data = {
+        "name": info.get("name", "Unknown"),
+        "description": info.get("description", ""),
+        "sector": info.get("sector", "Software"),
+        "stage": info.get("stage") or "Unknown",
+        "country": info.get("country", "Unknown"),
+        "founders": info.get("founders"),
+        "website": website,
+        "source": "manual",
+        "hn_url": url,
+    }
+    startup = _make_startup(startup_data)
+    session.add(startup)
+    session.commit()
+    session.refresh(startup)
+    return startup
 
 
 @app.get("/api/startups/{startup_id}", response_model=StartupRead)
@@ -326,7 +442,7 @@ def export_pdf(session: Session = Depends(get_session)):
     pdf.set_text_color(255, 255, 255)
     pdf.rect(0, 0, 210, 40, "F")
     pdf.set_xy(10, 8)
-    pdf.cell(0, 10, "Elaia Partners", ln=False)
+    pdf.cell(0, 10, "Elaia", ln=False)
     pdf.set_font("Helvetica", "", 11)
     pdf.set_xy(10, 20)
     pdf.cell(0, 8, "Deal Flow Intelligence — Top 10 Opportunities")
@@ -398,7 +514,7 @@ def export_pdf(session: Session = Depends(get_session)):
     pdf.set_y(-20)
     pdf.set_text_color(148, 163, 184)
     pdf.set_font("Helvetica", "I", 8)
-    pdf.cell(0, 5, "Confidential — Elaia Partners Internal Use Only", align="C")
+    pdf.cell(0, 5, "Confidential — Elaia Internal Use Only", align="C")
 
     pdf_bytes = pdf.output()
 

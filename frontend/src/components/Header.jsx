@@ -38,7 +38,13 @@ const TrashIcon = () => (
   </svg>
 )
 
-export default function Header({ onRefresh, onScoreAll, onCleared }) {
+const AddLinkIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+  </svg>
+)
+
+export default function Header({ onRefresh, onScoreAll, onCleared, onAdd }) {
   const [refreshing, setRefreshing] = useState(false)
   const [scoring, setScoring] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -74,7 +80,7 @@ export default function Header({ onRefresh, onScoreAll, onCleared }) {
     setScoring(true)
     try {
       const result = await scoreAll()
-      showToast(`Scored ${result.scored} startups with Claude AI.`)
+      showToast(`Scored ${result.scored} startups.`)
       onScoreAll?.()
     } catch (e) {
       showToast('Scoring failed — verify your Anthropic API key in the .env file.', 'error')
@@ -129,7 +135,7 @@ export default function Header({ onRefresh, onScoreAll, onCleared }) {
             <ElaiaLogo />
             <div>
               <div className="text-white font-bold text-lg leading-none tracking-tight">
-                Elaia Partners
+                Elaia
               </div>
               <div className="text-blue-300 text-xs font-medium mt-0.5 tracking-wide uppercase">
                 Deal Flow Intelligence
@@ -137,14 +143,17 @@ export default function Header({ onRefresh, onScoreAll, onCleared }) {
             </div>
           </div>
 
-          {/* Center badge */}
-          <div className="hidden md:flex items-center gap-2 text-slate-400 text-sm" aria-hidden="true">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-slow inline-block" />
-            <span>Powered by Claude AI</span>
-          </div>
-
           {/* Actions */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={onAdd}
+              className="btn bg-teal-600 hover:bg-teal-500 text-white"
+              title="Add a startup by pasting its website URL"
+            >
+              <AddLinkIcon />
+              <span className="hidden sm:inline">Add Startup</span>
+            </button>
+
             {/* Clear All — two-step inline confirmation */}
             <button
               onClick={handleClearClick}
@@ -176,7 +185,6 @@ export default function Header({ onRefresh, onScoreAll, onCleared }) {
               <span className="hidden sm:inline">
                 {refreshing ? 'Fetching…' : 'Fetch Sources'}
               </span>
-              <span className="hidden lg:inline text-white/40 text-xs">HackerNews · GitHub · News</span>
             </button>
 
             <button

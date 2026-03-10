@@ -35,7 +35,8 @@ async function request(method, path, { params, json, responseType } = {}) {
 const get  = (path, opts) => request('GET',  path, opts)
 const post = (path, opts) => request('POST', path, opts)
 
-export const getStartups  = (filters = {}) => get('/startups', { params: filters })
+export const getStartups      = (filters = {}) => get('/startups', { params: filters })
+export const startupFromUrl   = (url) => post('/startups/from-url', { json: { url } })
 export const getStartup   = (id) => get(`/startups/${id}`)
 export const scoreStartup = (id) => post(`/startups/${id}/score`)
 export const generateMemo = (id) => post(`/startups/${id}/memo`)

@@ -11,10 +11,7 @@ export default function LoadingOverlay({ message = 'Loading…' }) {
           </div>
         </div>
         <div className="text-center">
-          <div className="font-semibold text-slate-800 mb-1">{message}</div>
-          <div className="text-sm text-slate-500">
-            Powered by Claude AI
-          </div>
+          <div className="font-semibold text-slate-800">{message}</div>
         </div>
       </div>
     </div>
