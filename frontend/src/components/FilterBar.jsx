@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const SECTORS = [
   'All', 'AI/ML', 'Biotech', 'Quantum', 'Cybersecurity',
@@ -21,15 +21,18 @@ const SOURCES = [
 ]
 
 const SearchIcon = () => (
-  <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
   </svg>
 )
 
-const FilterSelect = ({ label, value, onChange, options }) => (
+const FilterSelect = ({ id, label, value, onChange, options }) => (
   <div className="flex flex-col gap-1">
-    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</label>
+    <label htmlFor={id} className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+      {label}
+    </label>
     <select
+      id={id}
       value={value}
       onChange={e => onChange(e.target.value)}
       className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer hover:border-slate-300 transition-colors min-w-[130px]"
@@ -45,10 +48,14 @@ const FilterSelect = ({ label, value, onChange, options }) => (
 
 export default function FilterBar({ filters, onChange, totalShown, totalAll }) {
   const [search, setSearch] = useState('')
+  // Use a ref so the debounce callback always sees current filters
+  // without re-running the effect on every filter change
+  const filtersRef = useRef(filters)
+  useEffect(() => { filtersRef.current = filters }, [filters])
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      onChange({ ...filters, search })
+      onChange({ ...filtersRef.current, search })
     }, 300)
     return () => clearTimeout(timer)
   }, [search])
@@ -71,12 +78,15 @@ export default function FilterBar({ filters, onChange, totalShown, totalAll }) {
       <div className="flex flex-wrap items-end gap-4">
         {/* Search */}
         <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Search</label>
+          <label htmlFor="startup-search" className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            Search
+          </label>
           <div className="relative">
             <SearchIcon />
             <input
+              id="startup-search"
               type="text"
-              placeholder="Search startups…"
+              placeholder="Search by name, description, or founder…"
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:border-slate-300 transition-colors"
@@ -85,6 +95,7 @@ export default function FilterBar({ filters, onChange, totalShown, totalAll }) {
         </div>
 
         <FilterSelect
+          id="sector-filter"
           label="Sector"
           value={filters.sector}
           onChange={v => onChange({ ...filters, sector: v })}
@@ -92,6 +103,7 @@ export default function FilterBar({ filters, onChange, totalShown, totalAll }) {
         />
 
         <FilterSelect
+          id="stage-filter"
           label="Stage"
           value={filters.stage}
           onChange={v => onChange({ ...filters, stage: v })}
@@ -99,6 +111,7 @@ export default function FilterBar({ filters, onChange, totalShown, totalAll }) {
         />
 
         <FilterSelect
+          id="country-filter"
           label="Country"
           value={filters.country}
           onChange={v => onChange({ ...filters, country: v })}
@@ -106,6 +119,7 @@ export default function FilterBar({ filters, onChange, totalShown, totalAll }) {
         />
 
         <FilterSelect
+          id="source-filter"
           label="Source"
           value={filters.source}
           onChange={v => onChange({ ...filters, source: v })}
@@ -114,10 +128,11 @@ export default function FilterBar({ filters, onChange, totalShown, totalAll }) {
 
         {/* Min score slider */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          <label htmlFor="min-score-slider" className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
             Min Score: <span className="text-blue-600">{filters.min_score || 0}</span>
           </label>
           <input
+            id="min-score-slider"
             type="range"
             min="0"
             max="90"
@@ -125,6 +140,7 @@ export default function FilterBar({ filters, onChange, totalShown, totalAll }) {
             value={filters.min_score || 0}
             onChange={e => onChange({ ...filters, min_score: Number(e.target.value) })}
             className="w-32 accent-blue-600 cursor-pointer"
+            aria-label={`Minimum fit score: ${filters.min_score || 0} out of 100`}
           />
         </div>
 

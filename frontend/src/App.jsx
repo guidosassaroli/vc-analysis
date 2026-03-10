@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import Header from './components/Header'
 import StatsBar from './components/StatsBar'
 import FilterBar from './components/FilterBar'
 import StartupCard from './components/StartupCard'
-import MemoModal from './components/MemoModal'
 import { SkeletonCard } from './components/LoadingOverlay'
 import { getStartups, getStats } from './api'
+
+const MemoModal = lazy(() => import('./components/MemoModal'))
 
 const DEFAULT_FILTERS = {
   sector: 'All',
@@ -27,7 +28,7 @@ function EmptyState({ filters, onReset }) {
       <p className="text-slate-500 text-sm mb-6 max-w-sm">
         {hasFilters
           ? 'Try adjusting your filters or clearing them to see more results.'
-          : 'Click "Refresh Feed" to fetch startups from HackerNews, or "Score All" to score the seeded data.'}
+          : 'Click "Fetch Sources" to pull from HackerNews, GitHub, and EU startup news, or "Score All" to score your existing startups.'}
       </p>
       {hasFilters && (
         <button onClick={onReset} className="btn-primary">
@@ -58,7 +59,7 @@ export default function App() {
       setStats(statsData)
     } catch (err) {
       console.error('Fetch failed:', err)
-      setError('Failed to connect to the backend. Make sure the API server is running on port 8000.')
+      setError('Cannot reach the server. Make sure the backend is running, then refresh the page.')
     } finally {
       setLoading(false)
     }
@@ -99,23 +100,18 @@ export default function App() {
     return result
   }, [allStartups, filters])
 
-  const handleStartupUpdated = (updated) => {
+  const handleStartupUpdated = useCallback((updated) => {
     setAllStartups(prev => prev.map(s => s.id === updated.id ? updated : s))
-    if (selectedStartup?.id === updated.id) {
-      setSelectedStartup(updated)
-    }
-    // Refresh stats
+    // Use functional update to avoid closing over selectedStartup
+    setSelectedStartup(prev => prev?.id === updated.id ? updated : prev)
     getStats().then(setStats).catch(console.error)
-  }
+  }, [])
 
-  const handleRefresh = () => fetchData()
-  const handleScoreAll = () => fetchData()
-  const handleCleared = () => fetchData()
-  const handleReset = () => setFilters(DEFAULT_FILTERS)
+  const handleReset = useCallback(() => setFilters(DEFAULT_FILTERS), [])
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header onRefresh={handleRefresh} onScoreAll={handleScoreAll} onCleared={handleCleared} />
+      <Header onRefresh={fetchData} onScoreAll={fetchData} onCleared={fetchData} />
 
       <main className="max-w-screen-2xl mx-auto px-6 py-8">
         {/* Stats Bar */}
@@ -132,13 +128,13 @@ export default function App() {
           {!loading && allStartups.length > 0 && (
             <div className="hidden sm:flex items-center gap-3 text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Strong fit ≥70
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" /> Strong fit ≥70
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" /> Moderate 40–70
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-600" /> Moderate fit 40–70
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-400" /> Weak fit &lt;40
+                <span className="w-2.5 h-2.5 rounded-full bg-red-600" /> Weak fit &lt;40
               </span>
             </div>
           )}
@@ -168,7 +164,11 @@ export default function App() {
 
         {/* Card Grid */}
         {!error && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+          aria-busy={loading}
+          aria-label="Startup pipeline"
+        >
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
             ) : filteredStartups.length === 0 ? (
@@ -197,13 +197,15 @@ export default function App() {
         )}
       </main>
 
-      {/* Memo Modal */}
+      {/* Memo Modal — lazy loaded, only fetched on first open */}
       {selectedStartup && (
-        <MemoModal
-          startup={selectedStartup}
-          onClose={() => setSelectedStartup(null)}
-          onUpdated={handleStartupUpdated}
-        />
+        <Suspense fallback={null}>
+          <MemoModal
+            startup={selectedStartup}
+            onClose={() => setSelectedStartup(null)}
+            onUpdated={handleStartupUpdated}
+          />
+        </Suspense>
       )}
     </div>
   )

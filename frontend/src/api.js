@@ -1,42 +1,57 @@
-import axios from 'axios'
+const BASE_URL = '/api'
+const TIMEOUT_MS = 120_000
 
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 120_000, // 2 min for scoring operations
-})
+async function request(method, path, { params, json, responseType } = {}) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  try {
+    const url = new URL(BASE_URL + path, window.location.origin)
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (v != null && v !== '') url.searchParams.set(k, String(v))
+      }
+    }
 
-export const getStartups = (filters = {}) =>
-  api.get('/startups', { params: filters }).then(r => r.data)
+    const res = await fetch(url, {
+      method,
+      headers: json != null ? { 'Content-Type': 'application/json' } : {},
+      body: json != null ? JSON.stringify(json) : undefined,
+      signal: controller.signal,
+    })
 
-export const getStartup = (id) =>
-  api.get(`/startups/${id}`).then(r => r.data)
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}: ${res.statusText}`)
+      err.status = res.status
+      throw err
+    }
 
-export const scoreStartup = (id) =>
-  api.post(`/startups/${id}/score`).then(r => r.data)
+    if (responseType === 'blob') return res.blob()
+    return res.json()
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
-export const generateMemo = (id) =>
-  api.post(`/startups/${id}/memo`).then(r => r.data)
+const get  = (path, opts) => request('GET',  path, opts)
+const post = (path, opts) => request('POST', path, opts)
 
-export const refreshFeed = () =>
-  api.post('/refresh').then(r => r.data)
+export const getStartups  = (filters = {}) => get('/startups', { params: filters })
+export const getStartup   = (id) => get(`/startups/${id}`)
+export const scoreStartup = (id) => post(`/startups/${id}/score`)
+export const generateMemo = (id) => post(`/startups/${id}/memo`)
+export const refreshFeed  = ()  => post('/refresh')
+export const scoreAll     = ()  => post('/score-all')
+export const clearAll     = ()  => post('/reset')
+export const getStats     = ()  => get('/stats')
 
-export const scoreAll = () =>
-  api.post('/score-all').then(r => r.data)
-
-export const clearAll = () =>
-  api.post('/reset').then(r => r.data)
-
-export const getStats = () =>
-  api.get('/stats').then(r => r.data)
-
-export const exportPdf = () =>
-  api.get('/export/pdf', { responseType: 'blob' }).then(r => {
-    const url = window.URL.createObjectURL(new Blob([r.data], { type: 'application/pdf' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `elaia-dealflow-${new Date().toISOString().slice(0, 10)}.pdf`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    window.URL.revokeObjectURL(url)
-  })
+export const exportPdf = async () => {
+  const blob = await get('/export/pdf', { responseType: 'blob' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `elaia-dealflow-${new Date().toISOString().slice(0, 10)}.pdf`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
