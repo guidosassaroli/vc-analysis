@@ -1,4 +1,4 @@
-const BASE_URL = '/api'
+const BASE_URL = (import.meta.env.VITE_API_URL ?? '') + '/api'
 const TIMEOUT_MS = 120_000
 
 async function request(method, path, { params, json, responseType } = {}) {

@@ -84,12 +84,21 @@ Dashboard available at `http://localhost:5173`.
 
 ## Environment Variables
 
+### Backend
+
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | Anthropic API key for scoring and memo generation |
-| `ANTHROPIC_MODEL` | No | Claude model to use (default: `claude-sonnet-4-6`) |
+| `ANTHROPIC_MODEL` | No | Claude model (default: `claude-sonnet-4-6`) |
 | `DATABASE_URL` | No | Database connection string (default: local SQLite) |
-| `GITHUB_TOKEN` | No | GitHub personal access token for higher API rate limits |
+| `CORS_ORIGINS` | No | Comma-separated allowed origins (default: localhost) |
+| `GITHUB_TOKEN` | No | GitHub token for higher API rate limits |
+
+### Frontend
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_API_URL` | Production only | Backend base URL, e.g. `https://your-backend.vercel.app` |
 
 **Database options:**
 
@@ -101,6 +110,29 @@ DATABASE_URL=sqlite:///./dealflow.db
 # Get from: Supabase dashboard → Project Settings → Database → Connection string (Transaction pooler, port 6543)
 DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
 ```
+
+## Deployment (Vercel)
+
+Deploy the backend and frontend as two separate Vercel projects from the same repository.
+
+> **Note:** Vercel Hobby plan has a 10-second function timeout. Claude scoring and memo calls typically take 15–30s — upgrade to Vercel Pro (60s timeout) for reliable operation.
+
+### Backend
+
+1. Create a new Vercel project, set **Root Directory** to `backend`
+2. Add environment variables:
+   - `ANTHROPIC_API_KEY`
+   - `DATABASE_URL` (Supabase PostgreSQL connection string)
+   - `CORS_ORIGINS` → set after the frontend is deployed, e.g. `https://your-frontend.vercel.app`
+3. Deploy — Vercel auto-detects `vercel.json` and uses the Python runtime
+
+### Frontend
+
+1. Create a new Vercel project, set **Root Directory** to `frontend`
+2. Framework preset: **Vite**
+3. Add environment variable:
+   - `VITE_API_URL` → your deployed backend URL, e.g. `https://your-backend.vercel.app`
+4. Deploy
 
 ## First Run
 
