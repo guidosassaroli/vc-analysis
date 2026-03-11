@@ -137,7 +137,7 @@ export default function Header({ onRefresh, onScoreAll, onCleared, onAdd }) {
               <div className="text-white font-bold text-lg leading-none tracking-tight">
                 Elaia
               </div>
-              <div className="text-blue-300 text-xs font-medium mt-0.5 tracking-wide uppercase">
+              <div className="text-teal-100 text-xs font-medium mt-0.5 tracking-wide uppercase">
                 Deal Flow Intelligence
               </div>
             </div>
@@ -147,7 +147,7 @@ export default function Header({ onRefresh, onScoreAll, onCleared, onAdd }) {
           <div className="flex items-center gap-2">
             <button
               onClick={onAdd}
-              className="btn bg-teal-600 hover:bg-teal-500 text-white"
+              className="btn bg-white/15 hover:bg-white/25 text-white border border-white/20"
               title="Add a startup by pasting its website URL"
             >
               <AddLinkIcon />
@@ -190,7 +190,7 @@ export default function Header({ onRefresh, onScoreAll, onCleared, onAdd }) {
             <button
               onClick={handleScoreAll}
               disabled={scoring}
-              className="btn bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
+              className="btn bg-white text-elaia-navy hover:bg-white/90 disabled:opacity-50"
             >
               <BoltIcon />
               <span className="hidden sm:inline">

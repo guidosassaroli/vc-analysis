@@ -20,5 +20,16 @@
     "website": "https://alice-bob.com/",
     "source": "manual",
     "hn_url": "https://alice-bob.com/"
+  },
+  {
+    "name": "Lexroom",
+    "description": "Lexroom is an AI-powered legal platform for professionals offering legal research, document analysis, clause drafting, and verified citations.",
+    "sector": "AI/ML",
+    "stage": "Unknown",
+    "country": "Italy",
+    "founders": null,
+    "website": "https://www.lexroom.ai",
+    "source": "manual",
+    "hn_url": "https://www.lexroom.ai"
   }
 ]

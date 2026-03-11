@@ -230,11 +230,11 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
                 {startup.name}
               </h2>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                <span className="text-blue-200 text-sm">{startup.sector}</span>
+                <span className="text-teal-100 text-sm">{startup.sector}</span>
                 <span className="text-white/30" aria-hidden="true">·</span>
-                <span className="text-blue-200 text-sm">{startup.stage}</span>
+                <span className="text-teal-100 text-sm">{startup.stage}</span>
                 <span className="text-white/30" aria-hidden="true">·</span>
-                <span className="text-blue-200 text-sm">{flag} {startup.country}</span>
+                <span className="text-teal-100 text-sm">{flag} {startup.country}</span>
               </div>
               {colors && (
                 <span className={`inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-full text-xs font-semibold ${colors.bg} ${colors.text}`}>
@@ -266,20 +266,20 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
             <p className="text-sm text-slate-600 leading-relaxed break-words">{startup.description}</p>
             {startup.website && (
               <a href={startup.website} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-blue-600 text-xs mt-2 hover:underline break-all">
+                className="inline-flex items-center gap-1 text-elaia-navy text-xs mt-2 hover:underline break-all">
                 {startup.website} ↗
               </a>
             )}
           </div>
 
           {startup.score_rationale && (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
-              <div className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">
+            <div className="bg-teal-50 border border-teal-100 rounded-xl p-4 mb-5">
+              <div className="text-xs font-semibold text-elaia-navy uppercase tracking-wide mb-2">
                 AI Scoring Rationale
               </div>
-              <p className="text-sm text-blue-900 leading-relaxed">{startup.score_rationale}</p>
+              <p className="text-sm text-teal-900 leading-relaxed">{startup.score_rationale}</p>
               {startup.red_flag && (
-                <div className="flex items-start gap-2 mt-3 pt-3 border-t border-blue-200">
+                <div className="flex items-start gap-2 mt-3 pt-3 border-t border-teal-200">
                   <ExclamationTriangleIcon />
                   <p className="text-sm text-amber-800">{startup.red_flag}</p>
                 </div>
@@ -296,7 +296,7 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
                 <button
                   onClick={handleGenerateMemo}
                   disabled={generating}
-                  className="btn-ghost text-xs text-blue-600"
+                  className="btn-ghost text-xs text-elaia-navy"
                 >
                   {generating ? 'Regenerating…' : '↺ Regenerate'}
                 </button>

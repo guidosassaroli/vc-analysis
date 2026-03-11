@@ -5,11 +5,11 @@ export default {
     extend: {
       colors: {
         elaia: {
-          navy: '#0a1628',
-          dark: '#0f2040',
-          mid: '#1e3a5f',
-          accent: '#2563eb',
-          light: '#3b82f6',
+          navy:   '#0e847f',
+          dark:   '#0a6b66',
+          mid:    '#0d726d',
+          accent: '#0e847f',
+          light:  '#14a89e',
         },
       },
       fontFamily: {
