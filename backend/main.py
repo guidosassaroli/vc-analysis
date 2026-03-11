@@ -111,7 +111,12 @@ def _extract_startup_info(url: str, text: str) -> dict:
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
     )
-    return json.loads(response.content[0].text)
+    raw = response.content[0].text.strip()
+    # Strip markdown code fences if present
+    if raw.startswith("```"):
+        raw = re.sub(r"^```[a-z]*\n?", "", raw)
+        raw = re.sub(r"\n?```$", "", raw)
+    return json.loads(raw)
 
 
 def _make_startup(data: dict) -> Startup:
@@ -201,9 +206,9 @@ async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_
 
     try:
         async with httpx.AsyncClient(
-            timeout=15.0,
+            timeout=httpx.Timeout(10.0, connect=5.0),
             follow_redirects=True,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; ElaiaBot/1.0)"},
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"},
         ) as client:
             resp = await client.get(url)
             resp.raise_for_status()
@@ -211,14 +216,24 @@ async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Could not fetch page: {e}")
 
-    extractor = _TextExtractor()
-    extractor.feed(html)
-    text = extractor.get_text()
+    # Truncate very large pages before parsing (Framer/JS-heavy sites can be 500KB+)
+    if len(html) > 300_000:
+        html = html[:300_000]
+
+    try:
+        extractor = _TextExtractor()
+        extractor.feed(html)
+        text = extractor.get_text()
+    except Exception:
+        text = ""
 
     if len(text) < 100:
-        raise HTTPException(status_code=422, detail="Not enough text content on page")
+        raise HTTPException(
+            status_code=422,
+            detail="Not enough readable text on this page. It may require JavaScript to render (e.g. Framer, React SPA). Try pasting the startup's details manually."
+        )
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         info = await loop.run_in_executor(None, _extract_startup_info, url, text)
     except (json.JSONDecodeError, KeyError, IndexError) as e:

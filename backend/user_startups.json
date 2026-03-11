@@ -31,5 +31,16 @@
     "website": "https://www.lexroom.ai",
     "source": "manual",
     "hn_url": "https://www.lexroom.ai"
+  },
+  {
+    "name": "PAL Robotics",
+    "description": "PAL Robotics designs and develops humanoid and mobile robots for research, healthcare, AI, and industry, with 20+ years of experience.",
+    "sector": "Industrial Robotics",
+    "stage": "Unknown",
+    "country": "Spain",
+    "founders": null,
+    "website": "https://pal-robotics.com",
+    "source": "manual",
+    "hn_url": "https://pal-robotics.com"
   }
 ]
