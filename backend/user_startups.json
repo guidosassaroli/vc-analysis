@@ -42,5 +42,16 @@
     "website": "https://pal-robotics.com",
     "source": "manual",
     "hn_url": "https://pal-robotics.com"
+  },
+  {
+    "name": "Voltrac",
+    "description": "Voltrac develops autonomous electric tractors for agriculture and military logistics, featuring swappable batteries and all-wheel drive.",
+    "sector": "Industrial Robotics",
+    "stage": "Seed",
+    "country": "Spain",
+    "founders": null,
+    "website": "https://voltrac.eu/",
+    "source": "manual",
+    "hn_url": "https://voltrac.eu/"
   }
 ]
