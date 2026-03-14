@@ -199,16 +199,6 @@ export default function Header({ onRefresh, onScoreAll, onCleared, onAdd }) {
               </span>
             </button>
 
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="btn bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50"
-            >
-              <DownloadIcon />
-              <span className="hidden sm:inline">
-                {exporting ? 'Exporting…' : 'Export PDF'}
-              </span>
-            </button>
           </div>
         </div>
       </header>
