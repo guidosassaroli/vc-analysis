@@ -3,8 +3,12 @@ import { refreshFeed, scoreAll, exportPdf, clearAll } from '../api'
 
 const ElaiaLogo = () => (
   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <rect width="32" height="32" rx="7" fill="#2563eb" />
-    <path d="M8 10h16M8 16h12M8 22h16" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+    {/* Three ascending diagonal bars */}
+    <polygon points="4,28 8,28 10,20 6,20" fill="white" />
+    <polygon points="11,28 15,28 19,14 15,14" fill="white" />
+    <polygon points="18,28 22,28 27,7 23,7" fill="white" />
+    {/* Circle dot above rightmost bar */}
+    <circle cx="26" cy="4" r="2.5" fill="white" />
   </svg>
 )
 
@@ -135,9 +139,6 @@ export default function Header({ onRefresh, onScoreAll, onCleared, onAdd }) {
             <ElaiaLogo />
             <div>
               <div className="text-white font-bold text-lg leading-none tracking-tight">
-                Elaia
-              </div>
-              <div className="text-teal-100 text-xs font-medium mt-0.5 tracking-wide uppercase">
                 Deal Flow Intelligence
               </div>
             </div>

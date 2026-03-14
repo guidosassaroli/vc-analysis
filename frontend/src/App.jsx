@@ -129,7 +129,7 @@ export default function App() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Deal Flow Pipeline</h1>
             <p className="text-slate-500 text-sm mt-0.5">
-              AI-scored opportunities matched against Elaia's investment thesis
+              AI-scored opportunities matched against your investment thesis
             </p>
           </div>
           {!loading && allStartups.length > 0 && (
@@ -197,7 +197,7 @@ export default function App() {
         {!loading && !error && (
           <div className="mt-12 pb-6 text-center text-xs text-slate-400">
             <p>
-              Elaia Deal Flow Intelligence · Confidential internal tool
+              Deal Flow Intelligence · Confidential internal tool
             </p>
           </div>
         )}
