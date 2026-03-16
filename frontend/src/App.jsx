@@ -114,6 +114,12 @@ export default function App() {
     getStats().then(setStats).catch(console.error)
   }, [])
 
+  const handleStartupDeleted = useCallback((id) => {
+    setAllStartups(prev => prev.filter(s => s.id !== id))
+    setSelectedStartup(prev => prev?.id === id ? null : prev)
+    getStats().then(setStats).catch(console.error)
+  }, [])
+
   const handleReset = useCallback(() => setFilters(DEFAULT_FILTERS), [])
 
   return (
@@ -187,6 +193,7 @@ export default function App() {
                   startup={startup}
                   onViewMemo={setSelectedStartup}
                   onScored={handleStartupUpdated}
+                  onDeleted={handleStartupDeleted}
                 />
               ))
             )}

@@ -25,7 +25,7 @@ SEED_STARTUPS = [
             "and adapt autonomously to unstructured environments. Cuts customer operating costs "
             "by up to 70%. Backed by Elaia and SpeedInvest in a $16M seed round."
         ),
-        "sector": "Robotics / Physical AI",
+        "sector": "Industrial Robotics",
         "stage": "Seed",
         "country": "Switzerland",
         "founded_year": 2023,
@@ -42,8 +42,8 @@ SEED_STARTUPS = [
             "Airbus, processing $11.2B+ in GMV in 2024. Recently launched Mirakl Nexus, an agentic "
             "commerce infrastructure layer connecting merchants to AI-powered shopping platforms."
         ),
-        "sector": "eCommerce / Marketplace Infrastructure",
-        "stage": "Late Stage (Series E / Debt)",
+        "sector": "Software",
+        "stage": "Series B",
         "country": "France",
         "founded_year": 2012,
         "website": "https://www.mirakl.com",
@@ -62,7 +62,7 @@ SEED_STARTUPS = [
             "an agreement with RWE, the Free State of Bavaria, and the IPP to build Europe's first "
             "commercial fusion plant, backed by Bavaria's €400M commitment."
         ),
-        "sector": "Energy / Fusion",
+        "sector": "Climate Tech",
         "stage": "Series A",
         "country": "Germany",
         "founded_year": 2023,
@@ -85,7 +85,7 @@ SEED_STARTUPS = [
             "20% throughput gains. Strategic partnership with IBM; active projects in automotive and "
             "advanced manufacturing. ETH Zurich / HSG spinout, formerly known as Xelerit."
         ),
-        "sector": "Industrial AI / Manufacturing Software",
+        "sector": "Industrial Robotics",
         "stage": "Pre-Seed",
         "country": "Switzerland",
         "founded_year": 2025,
@@ -108,7 +108,7 @@ SEED_STARTUPS = [
             "RaaS business model. Co-authored InCoRo robotics control framework with Meta AI and "
             "ServiceNow. UPC spinout; founded by former presidents of the UPC robotics association."
         ),
-        "sector": "Robotics / Physical AI",
+        "sector": "Industrial Robotics",
         "stage": "Seed",
         "country": "Spain",
         "founded_year": 2021,

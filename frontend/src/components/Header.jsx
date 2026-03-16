@@ -199,6 +199,21 @@ export default function Header({ onRefresh, onScoreAll, onCleared, onAdd }) {
               </span>
             </button>
 
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="btn bg-white/10 hover:bg-white/20 text-white border border-white/20 disabled:opacity-50"
+              title="Export top 10 scored startups as PDF"
+            >
+              {exporting
+                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
+                : <DownloadIcon />
+              }
+              <span className="hidden sm:inline">
+                {exporting ? 'Exporting…' : 'Export PDF'}
+              </span>
+            </button>
+
           </div>
         </div>
       </header>

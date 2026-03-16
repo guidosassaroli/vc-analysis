@@ -26,15 +26,18 @@ async function request(method, path, { params, json, responseType } = {}) {
     }
 
     if (responseType === 'blob') return res.blob()
+    if (res.status === 204) return null
     return res.json()
   } finally {
     clearTimeout(timer)
   }
 }
 
-const get  = (path, opts) => request('GET',  path, opts)
-const post = (path, opts) => request('POST', path, opts)
+const get    = (path, opts) => request('GET',    path, opts)
+const post   = (path, opts) => request('POST',   path, opts)
+const del    = (path, opts) => request('DELETE', path, opts)
 
+export const deleteStartup    = (id) => del(`/startups/${id}`)
 export const getStartups      = (filters = {}) => get('/startups', { params: filters })
 export const startupFromUrl   = (url) => post('/startups/from-url', { json: { url } })
 export const getStartup   = (id) => get(`/startups/${id}`)

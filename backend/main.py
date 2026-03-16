@@ -273,6 +273,16 @@ def get_startup(startup_id: int, session: Session = Depends(get_session)):
     return startup
 
 
+@app.delete("/api/startups/{startup_id}", status_code=204)
+def delete_startup(startup_id: int, session: Session = Depends(get_session)):
+    """Remove a single startup from the pipeline."""
+    startup = session.get(Startup, startup_id)
+    if not startup:
+        raise HTTPException(status_code=404, detail="Startup not found")
+    session.delete(startup)
+    session.commit()
+
+
 @app.post("/api/startups/{startup_id}/score", response_model=StartupRead)
 def score_one(startup_id: int, session: Session = Depends(get_session)):
     """Score (or re-score) a single startup with Claude."""
@@ -379,19 +389,25 @@ async def refresh_feed(session: Session = Depends(get_session)):
 
     session.commit()
     new_count = len(to_score)
-    scored_count = 0
 
-    # Score new startups (max 10 to keep latency reasonable)
-    for startup in to_score[:10]:
+    # Score new startups concurrently (max 10 to keep latency reasonable)
+    batch = to_score[:10]
+    for startup in batch:
         session.refresh(startup)
-        result = score_startup(startup.__dict__)
+
+    loop = asyncio.get_running_loop()
+    startup_dicts = [dict(startup.__dict__) for startup in batch]
+    results = await asyncio.gather(
+        *[loop.run_in_executor(None, score_startup, d) for d in startup_dicts]
+    )
+    for startup, result in zip(batch, results):
         startup.fit_score = result.get("fit_score")
         startup.score_rationale = result.get("rationale")
         startup.red_flag = result.get("red_flag")
         startup.scored_at = result.get("scored_at")
         session.add(startup)
-        scored_count += 1
 
+    scored_count = len(batch)
     session.commit()
 
     hn_n = source_counts["hn"]
@@ -429,30 +445,40 @@ def reset_database(session: Session = Depends(get_session)):
 
 
 @app.post("/api/score-all")
-def score_all_unscored(session: Session = Depends(get_session)):
-    """Score all startups that haven't been scored yet."""
+async def score_all_unscored(session: Session = Depends(get_session)):
+    """Score all unscored startups concurrently (capped at 20 per call)."""
     unscored = session.exec(
         select(Startup).where(Startup.fit_score == None)
     ).all()
 
-    scored = 0
-    for startup in unscored:
-        result = score_startup({
-            "name": startup.name,
-            "description": startup.description,
-            "sector": startup.sector,
-            "stage": startup.stage,
-            "country": startup.country,
-            "founders": startup.founders,
-        })
+    batch = unscored[:20]
+    if not batch:
+        return {"scored": 0, "message": "No unscored startups."}
+
+    loop = asyncio.get_running_loop()
+    startup_dicts = [
+        {
+            "name": s.name,
+            "description": s.description,
+            "sector": s.sector,
+            "stage": s.stage,
+            "country": s.country,
+            "founders": s.founders,
+        }
+        for s in batch
+    ]
+    results = await asyncio.gather(
+        *[loop.run_in_executor(None, score_startup, d) for d in startup_dicts]
+    )
+    for startup, result in zip(batch, results):
         startup.fit_score = result.get("fit_score")
         startup.score_rationale = result.get("rationale")
         startup.red_flag = result.get("red_flag")
         startup.scored_at = result.get("scored_at")
         session.add(startup)
-        scored += 1
 
     session.commit()
+    scored = len(batch)
     return {"scored": scored, "message": f"Scored {scored} startups."}
 
 
