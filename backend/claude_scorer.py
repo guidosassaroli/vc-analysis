@@ -32,7 +32,7 @@ WEAK FIT indicators:
 
 Always respond with valid JSON only. No markdown, no explanation outside the JSON."""
 
-SCORING_PROMPT = """Analyze this startup against Elaia's investment thesis.
+SCORING_PROMPT = """Analyze this startup against Elaia's investment thesis by scoring 5 dimensions independently.
 
 Startup:
 Name: {name}
@@ -42,10 +42,21 @@ Stage: {stage}
 Country: {country}
 Founders: {founders}
 
+Score each dimension 0–100 against Elaia's thesis criteria:
+- team (25%): academic pedigree, domain expertise, PhD/spinoff background, Unit 8200 / CNRS / INRIA / Fraunhofer / Weizmann credentials, prior exits
+- technology (25%): proprietary research, patents, novel algorithms, hardware IP, deep tech defensibility — penalize commodity SaaS
+- market (20%): TAM size, timing, growth signal, B2B vs B2C (B2C penalized)
+- geography (15%): France/Spain/Israel/Germany = strong fit; other EU = moderate; US-only = weak
+- stage (15%): Pre-Seed/Seed/Series A = strong; Series B = moderate; later = weak
+
 Respond with JSON in exactly this format:
 {{
-  "fit_score": <integer 0-100>,
-  "rationale": "<exactly 2 sentences explaining the score>",
+  "team": <integer 0-100>,
+  "technology": <integer 0-100>,
+  "market": <integer 0-100>,
+  "geography": <integer 0-100>,
+  "stage": <integer 0-100>,
+  "rationale": "<exactly 2 sentences summarising overall thesis fit>",
   "red_flag": "<one specific red flag, or null if none>"
 }}"""
 
@@ -95,10 +106,23 @@ def _parse_json_response(text: str) -> Optional[dict]:
     return None
 
 
+_SUBSCORE_WEIGHTS = {
+    "team": 0.25,
+    "technology": 0.25,
+    "market": 0.20,
+    "geography": 0.15,
+    "stage": 0.15,
+}
+
+
+def _clamp(v, lo=0, hi=100) -> float:
+    return max(lo, min(hi, float(v)))
+
+
 def score_startup(startup_data: dict) -> dict:
     """
     Score a startup synchronously using Claude API.
-    Returns dict with fit_score, rationale, red_flag.
+    Returns subscores + weighted fit_score + rationale + red_flag.
     """
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -129,8 +153,16 @@ def score_startup(startup_data: dict) -> dict:
                 "scored_at": datetime.now(timezone.utc),
             }
 
+        subscores = {k: _clamp(parsed.get(k, 50)) for k in _SUBSCORE_WEIGHTS}
+        fit_score = round(sum(subscores[k] * w for k, w in _SUBSCORE_WEIGHTS.items()))
+
         return {
-            "fit_score": max(0, min(100, int(parsed.get("fit_score", 50)))),
+            "fit_score": fit_score,
+            "subscore_team": subscores["team"],
+            "subscore_technology": subscores["technology"],
+            "subscore_market": subscores["market"],
+            "subscore_geography": subscores["geography"],
+            "subscore_stage": subscores["stage"],
             "rationale": str(parsed.get("rationale", ""))[:500],
             "red_flag": parsed.get("red_flag") or None,
             "scored_at": datetime.now(timezone.utc),

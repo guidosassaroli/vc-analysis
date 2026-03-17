@@ -20,10 +20,17 @@ class Startup(SQLModel, table=True):
     hn_url: Optional[str] = None
     hn_points: Optional[int] = None
 
-    # Claude scoring
+    # Claude scoring — overall
     fit_score: Optional[float] = None
     score_rationale: Optional[str] = None
     red_flag: Optional[str] = None
+
+    # Subscores (0-100 each, weighted into fit_score)
+    subscore_team: Optional[float] = None        # 25%
+    subscore_technology: Optional[float] = None  # 25%
+    subscore_market: Optional[float] = None      # 20%
+    subscore_geography: Optional[float] = None   # 15%
+    subscore_stage: Optional[float] = None       # 15%
 
     # Due diligence memo sections
     memo_problem: Optional[str] = None
@@ -56,6 +63,11 @@ class StartupRead(SQLModel):
     fit_score: Optional[float]
     score_rationale: Optional[str]
     red_flag: Optional[str]
+    subscore_team: Optional[float]
+    subscore_technology: Optional[float]
+    subscore_market: Optional[float]
+    subscore_geography: Optional[float]
+    subscore_stage: Optional[float]
     memo_problem: Optional[str]
     memo_solution: Optional[str]
     memo_team: Optional[str]

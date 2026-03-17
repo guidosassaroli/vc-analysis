@@ -57,6 +57,11 @@ def _run_migrations():
         ("startup", "funding", "VARCHAR"),
         ("startup", "linkedin_url", "VARCHAR"),
         ("startup", "status", "VARCHAR DEFAULT 'Sourced'"),
+        ("startup", "subscore_team", "FLOAT"),
+        ("startup", "subscore_technology", "FLOAT"),
+        ("startup", "subscore_market", "FLOAT"),
+        ("startup", "subscore_geography", "FLOAT"),
+        ("startup", "subscore_stage", "FLOAT"),
     ]
     # Use AUTOCOMMIT so each DDL statement is its own transaction — avoids
     # PostgreSQL leaving the connection in an aborted state on duplicate columns.
@@ -352,6 +357,11 @@ async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_
         startup.score_rationale = result.get("rationale")
         startup.red_flag = result.get("red_flag")
         startup.scored_at = result.get("scored_at")
+        startup.subscore_team = result.get("subscore_team")
+        startup.subscore_technology = result.get("subscore_technology")
+        startup.subscore_market = result.get("subscore_market")
+        startup.subscore_geography = result.get("subscore_geography")
+        startup.subscore_stage = result.get("subscore_stage")
 
         startup_dict_for_memo = {
             "name": startup.name,
@@ -407,6 +417,11 @@ def score_one(startup_id: int, session: Session = Depends(get_session)):
     startup.score_rationale = result.get("rationale")
     startup.red_flag = result.get("red_flag")
     startup.scored_at = result.get("scored_at")
+    startup.subscore_team = result.get("subscore_team")
+    startup.subscore_technology = result.get("subscore_technology")
+    startup.subscore_market = result.get("subscore_market")
+    startup.subscore_geography = result.get("subscore_geography")
+    startup.subscore_stage = result.get("subscore_stage")
 
     # Also generate memo
     startup_dict = {

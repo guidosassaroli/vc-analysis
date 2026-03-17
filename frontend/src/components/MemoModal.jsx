@@ -134,6 +134,36 @@ function ScoreRing({ score }) {
   )
 }
 
+const SUBSCORES = [
+  { key: 'subscore_team',       label: 'Team',        weight: '25%' },
+  { key: 'subscore_technology', label: 'Technology',  weight: '25%' },
+  { key: 'subscore_market',     label: 'Market',      weight: '20%' },
+  { key: 'subscore_geography',  label: 'Geography',   weight: '15%' },
+  { key: 'subscore_stage',      label: 'Stage Fit',   weight: '15%' },
+]
+
+function SubscoreBar({ label, weight, value }) {
+  const pct = Math.round(value ?? 0)
+  const color = pct >= 70 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626'
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-24 shrink-0 flex items-baseline justify-between">
+        <span className="text-xs text-slate-600 font-medium">{label}</span>
+        <span className="text-xs text-slate-400">{weight}</span>
+      </div>
+      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${pct}%`, backgroundColor: color }}
+        />
+      </div>
+      <span className="w-8 text-right text-xs font-semibold tabular-nums" style={{ color }}>
+        {pct}
+      </span>
+    </div>
+  )
+}
+
 function MemoSection({ Icon, label, content, redFlags }) {
   const isRedFlags = !!redFlags
   return (
@@ -263,7 +293,9 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
   }
 
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (chatMessages.length > 0 || chatSending) {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [chatMessages, chatSending])
 
   return (
@@ -358,6 +390,19 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
                   <p className="text-sm text-amber-800">{startup.red_flag}</p>
                 </div>
               )}
+            </div>
+          )}
+
+          {SUBSCORES.some(s => startup[s.key] != null) && (
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-5">
+              <div className="text-xs font-semibold text-elaia-navy uppercase tracking-wide mb-3">
+                Score Breakdown
+              </div>
+              <div className="space-y-2.5">
+                {SUBSCORES.map(s => (
+                  <SubscoreBar key={s.key} label={s.label} weight={s.weight} value={startup[s.key]} />
+                ))}
+              </div>
             </div>
           )}
 
