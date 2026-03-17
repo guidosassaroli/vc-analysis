@@ -56,14 +56,19 @@ def _run_migrations():
     new_columns = [
         ("startup", "funding", "VARCHAR"),
         ("startup", "linkedin_url", "VARCHAR"),
+        ("startup", "status", "VARCHAR DEFAULT 'Sourced'"),
     ]
-    with engine.connect() as conn:
+    # Use AUTOCOMMIT so each DDL statement is its own transaction — avoids
+    # PostgreSQL leaving the connection in an aborted state on duplicate columns.
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         for table, col, col_type in new_columns:
             try:
-                conn.execute(sqlalchemy.text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
-                conn.commit()
-            except Exception:
-                pass  # column already exists
+                # IF NOT EXISTS: no-op if column already present (PostgreSQL 9.6+)
+                conn.execute(sqlalchemy.text(
+                    f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type}"
+                ))
+            except Exception as e:
+                print(f"[Migration] Warning for {table}.{col}: {e}")
 
 
 @app.on_event("startup")
@@ -78,6 +83,19 @@ _STARTUP_FIELDS = set(Startup.model_fields.keys()) if hasattr(Startup, "model_fi
 
 class FetchUrlRequest(BaseModel):
     url: str
+
+class StatusUpdateRequest(BaseModel):
+    status: str
+
+class ChatMessage(BaseModel):
+    role: str      # "user" | "assistant"
+    content: str
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list[ChatMessage] = []
+
+_VALID_STATUSES = {"Sourced", "In Review", "Meeting Booked", "Term Sheet", "Pass"}
 
 
 class _TextExtractor(HTMLParser):
@@ -438,6 +456,63 @@ def generate_memo_for(startup_id: int, session: Session = Depends(get_session)):
     session.commit()
     session.refresh(startup)
     return startup
+
+
+@app.patch("/api/startups/{startup_id}/status", response_model=StartupRead)
+def update_status(startup_id: int, req: StatusUpdateRequest, session: Session = Depends(get_session)):
+    """Update the pipeline status of a startup."""
+    if req.status not in _VALID_STATUSES:
+        raise HTTPException(status_code=422, detail=f"status must be one of {sorted(_VALID_STATUSES)}")
+    startup = session.get(Startup, startup_id)
+    if not startup:
+        raise HTTPException(status_code=404, detail="Startup not found")
+    startup.status = req.status
+    session.add(startup)
+    session.commit()
+    session.refresh(startup)
+    return startup
+
+
+@app.post("/api/startups/{startup_id}/chat")
+def chat_with_startup(startup_id: int, req: ChatRequest, session: Session = Depends(get_session)):
+    """Answer a free-form question about a startup using Claude."""
+    startup = session.get(Startup, startup_id)
+    if not startup:
+        raise HTTPException(status_code=404, detail="Startup not found")
+
+    import anthropic as _anthropic
+    client = _anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+
+    system = f"""You are an AI research assistant helping a VC analyst at Elaia Partners evaluate a startup. \
+Answer in 2-3 sentences max, plain text only — no Markdown, headers, bullets, or tables. \
+Be direct and analytical. Base your answers on the information below; acknowledge when something is unknown.
+
+Startup: {startup.name}
+Description: {startup.description}
+Sector: {startup.sector} | Stage: {startup.stage} | Country: {startup.country}
+Founded: {startup.founded_year or 'Unknown'} | Founders: {startup.founders or 'Unknown'}
+Funding: {startup.funding or 'Unknown'}
+Fit Score: {f"{startup.fit_score}/100" if startup.fit_score is not None else "Not scored"}
+Score Rationale: {startup.score_rationale or 'N/A'}
+Red Flag: {startup.red_flag or 'None identified'}
+Problem: {startup.memo_problem or 'N/A'}
+Solution: {startup.memo_solution or 'N/A'}
+Team: {startup.memo_team or 'N/A'}
+Traction: {startup.memo_traction or 'N/A'}
+Elaia Fit: {startup.memo_elaia_fit or 'N/A'}
+Risks: {startup.memo_red_flags or 'N/A'}"""
+
+    messages = [{"role": m.role, "content": m.content} for m in req.history]
+    messages.append({"role": "user", "content": req.message})
+
+    response = client.messages.create(
+        model=model,
+        max_tokens=200,
+        system=system,
+        messages=messages,
+    )
+    return {"reply": response.content[0].text.strip()}
 
 
 @app.post("/api/refresh", response_model=RefreshStatus)

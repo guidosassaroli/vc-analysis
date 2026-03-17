@@ -3,6 +3,7 @@ import Header from './components/Header'
 import StatsBar from './components/StatsBar'
 import FilterBar from './components/FilterBar'
 import StartupCard from './components/StartupCard'
+import AnalyticsPanel from './components/AnalyticsPanel'
 import { SkeletonCard } from './components/LoadingOverlay'
 import { getStartups, getStats } from './api'
 
@@ -129,6 +130,9 @@ export default function App() {
       <main className="max-w-screen-2xl mx-auto px-6 py-8">
         {/* Stats Bar */}
         <StatsBar stats={stats} />
+
+        {/* Analytics Panel */}
+        {!loading && <AnalyticsPanel startups={allStartups} />}
 
         {/* Page Title */}
         <div className="flex items-center justify-between mb-4">

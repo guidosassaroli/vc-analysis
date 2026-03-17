@@ -1,6 +1,7 @@
 import { useState, useRef, memo } from 'react'
 import { scoreStartup, deleteStartup } from '../api'
 import { getScoreColor } from '../utils/scoreColors'
+import { getStatusClass } from '../utils/statusColors'
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
@@ -159,6 +160,7 @@ function StartupCard({ startup, onViewMemo, onScored, onDeleted }) {
             <span className={`tag ${sectorClass}`}>{startup.sector}</span>
             <span className={`tag ${stageClass}`}>{startup.stage}</span>
             <span className={`tag ${sourceBadge.class}`}>{sourceBadge.label}</span>
+            <span className={`tag ${getStatusClass(startup.status || 'Sourced')}`}>{startup.status || 'Sourced'}</span>
           </div>
           <h3 className="font-bold text-slate-900 text-base leading-tight truncate" title={startup.name}>
             {startup.name}

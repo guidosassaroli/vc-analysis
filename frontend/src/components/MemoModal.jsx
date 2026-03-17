@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { generateMemo, scoreStartup } from '../api'
+import { generateMemo, scoreStartup, chatWithStartup, updateStatus } from '../api'
 import { getScoreColor } from '../utils/scoreColors'
+import { getStatusClass, PIPELINE_STATUSES } from '../utils/statusColors'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,25 @@ const BoltIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
   </svg>
 )
+
+const ChatIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+  </svg>
+)
+
+const SendIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+  </svg>
+)
+
+const SUGGESTED_QUESTIONS = [
+  'Who are the main competitors?',
+  'What is the exit potential?',
+  'How does this fit Elaia\'s thesis?',
+  'What questions should we ask the founders?',
+]
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -146,8 +166,13 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
   const [startup, setStartup] = useState(initialStartup)
   const [generating, setGenerating] = useState(false)
   const [rescoring, setRescoring] = useState(false)
+  const [statusUpdating, setStatusUpdating] = useState(false)
+  const [chatMessages, setChatMessages] = useState([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatSending, setChatSending] = useState(false)
   const modalRef = useRef(null)
   const prevFocusRef = useRef(null)
+  const chatBottomRef = useRef(null)
 
   const hasMemo = MEMO_SECTIONS.some(s => startup[s.key])
   const score = startup.fit_score
@@ -207,6 +232,40 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
     }
   }
 
+  const handleStatusChange = async (newStatus) => {
+    setStatusUpdating(true)
+    try {
+      const updated = await updateStatus(startup.id, newStatus)
+      setStartup(updated)
+      onUpdated?.(updated)
+    } catch (e) {
+      console.error('Status update failed', e)
+    } finally {
+      setStatusUpdating(false)
+    }
+  }
+
+  const handleChatSend = async (text) => {
+    const msg = (text ?? chatInput).trim()
+    if (!msg || chatSending) return
+    const userMsg = { role: 'user', content: msg }
+    setChatMessages(prev => [...prev, userMsg])
+    setChatInput('')
+    setChatSending(true)
+    try {
+      const { reply } = await chatWithStartup(startup.id, msg, chatMessages)
+      setChatMessages(prev => [...prev, { role: 'assistant', content: reply }])
+    } catch {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Something went wrong. Please try again.' }])
+    } finally {
+      setChatSending(false)
+    }
+  }
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [chatMessages, chatSending])
+
   return (
     <div
       className="modal-overlay"
@@ -236,11 +295,26 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
                 <span className="text-white/30" aria-hidden="true">·</span>
                 <span className="text-teal-100 text-sm">{flag} {startup.country}</span>
               </div>
-              {colors && (
-                <span className={`inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-full text-xs font-semibold ${colors.bg} ${colors.text}`}>
-                  {colors.label}
-                </span>
-              )}
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {colors && (
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${colors.bg} ${colors.text}`}>
+                    {colors.label}
+                  </span>
+                )}
+                <select
+                  value={startup.status || 'Sourced'}
+                  onChange={e => handleStatusChange(e.target.value)}
+                  disabled={statusUpdating}
+                  aria-label="Pipeline status"
+                  className={`appearance-none text-xs font-medium rounded-full px-2.5 py-1 cursor-pointer
+                    focus:outline-none focus:ring-2 focus:ring-white/50 disabled:opacity-60 border-0
+                    ${getStatusClass(startup.status || 'Sourced')}`}
+                >
+                  {PIPELINE_STATUSES.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
           <button
@@ -356,6 +430,83 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
               ))}
             </div>
           )}
+
+          {/* ── Chat panel ── */}
+          <div className="mt-6 border border-slate-200 rounded-xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 bg-elaia-navy">
+              <span className="text-white/80"><ChatIcon /></span>
+              <span className="text-sm font-semibold text-white">Ask Claude about {startup.name}</span>
+            </div>
+
+            {/* Message list */}
+            <div className="h-56 overflow-y-auto px-4 py-3 space-y-3 bg-white">
+              {chatMessages.length === 0 && !chatSending && (
+                <div>
+                  <p className="text-xs text-slate-400 mb-2">Suggested questions:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SUGGESTED_QUESTIONS.map(q => (
+                      <button
+                        key={q}
+                        onClick={() => handleChatSend(q)}
+                        className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-elaia-navy hover:text-white transition-colors ring-1 ring-slate-200"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {chatMessages.map((m, i) => (
+                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                    m.role === 'user'
+                      ? 'bg-elaia-navy text-white rounded-tr-sm'
+                      : 'bg-slate-100 text-slate-700 rounded-tl-sm'
+                  }`}>
+                    {m.content}
+                  </div>
+                </div>
+              ))}
+              {chatSending && (
+                <div className="flex justify-start">
+                  <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-4 py-2.5">
+                    <span className="flex gap-1">
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div ref={chatBottomRef} />
+            </div>
+
+            {/* Input row */}
+            <div className="flex items-center gap-2 px-3 py-2.5 border-t border-slate-100 bg-slate-50">
+              <textarea
+                rows={1}
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend() }
+                }}
+                placeholder="Ask anything about this startup…"
+                disabled={chatSending}
+                className="flex-1 resize-none bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800
+                  placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-elaia-accent focus:border-transparent
+                  disabled:opacity-50"
+              />
+              <button
+                onClick={() => handleChatSend()}
+                disabled={!chatInput.trim() || chatSending}
+                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-elaia-navy text-white
+                  hover:opacity-90 disabled:opacity-40 transition-opacity"
+                aria-label="Send message"
+              >
+                <SendIcon />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}

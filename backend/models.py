@@ -15,6 +15,7 @@ class Startup(SQLModel, table=True):
     founders: Optional[str] = None  # comma-separated list
     funding: Optional[str] = None   # e.g. "Raised $2M Seed"
     linkedin_url: Optional[str] = None
+    status: str = Field(default="Sourced")  # pipeline stage
     source: str = "seed"  # "hn" | "seed"
     hn_url: Optional[str] = None
     hn_points: Optional[int] = None
@@ -48,6 +49,7 @@ class StartupRead(SQLModel):
     founders: Optional[str]
     funding: Optional[str]
     linkedin_url: Optional[str]
+    status: str
     source: str
     hn_url: Optional[str]
     hn_points: Optional[int]
