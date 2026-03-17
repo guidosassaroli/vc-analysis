@@ -41,7 +41,7 @@ Sector: {sector}
 Stage: {stage}
 Country: {country}
 Founders: {founders}
-
+{analyst_context}
 Score each dimension 0–100 against Elaia's thesis criteria:
 - team (25%): academic pedigree, domain expertise, PhD/spinoff background, Unit 8200 / CNRS / INRIA / Fraunhofer / Weizmann credentials, prior exits
 - technology (25%): proprietary research, patents, novel algorithms, hardware IP, deep tech defensibility — penalize commodity SaaS
@@ -126,6 +126,21 @@ def score_startup(startup_data: dict) -> dict:
     """
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
+    # Build analyst context block from notes + chat history
+    context_parts = []
+    if startup_data.get("user_notes"):
+        context_parts.append(f"Analyst notes: {startup_data['user_notes']}")
+    if startup_data.get("chat_history"):
+        try:
+            history = json.loads(startup_data["chat_history"]) if isinstance(startup_data["chat_history"], str) else startup_data["chat_history"]
+            # Include only user messages as feedback signal (concise)
+            user_msgs = [m["content"] for m in history if m.get("role") == "user"][:6]
+            if user_msgs:
+                context_parts.append("Analyst chat feedback:\n" + "\n".join(f"- {m}" for m in user_msgs))
+        except Exception:
+            pass
+    analyst_context = ("\nANALYST CONTEXT — adjust subscores to reflect this:\n" + "\n".join(context_parts) + "\n") if context_parts else ""
+
     prompt = SCORING_PROMPT.format(
         name=startup_data.get("name", ""),
         description=startup_data.get("description", "")[:800],
@@ -133,6 +148,7 @@ def score_startup(startup_data: dict) -> dict:
         stage=startup_data.get("stage", ""),
         country=startup_data.get("country", ""),
         founders=startup_data.get("founders") or "Unknown",
+        analyst_context=analyst_context,
     )
 
     try:

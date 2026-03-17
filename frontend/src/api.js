@@ -39,6 +39,8 @@ const patch  = (path, opts) => request('PATCH',  path, opts)
 const del    = (path, opts) => request('DELETE', path, opts)
 
 export const updateStatus     = (id, status) => patch(`/startups/${id}/status`, { json: { status } })
+export const updateNotes      = (id, user_notes) => patch(`/startups/${id}/notes`, { json: { user_notes } })
+export const saveChatHistory  = (id, history) => patch(`/startups/${id}/chat-history`, { json: { history } })
 export const chatWithStartup  = (id, message, history) => post(`/startups/${id}/chat`, { json: { message, history } })
 export const deleteStartup    = (id) => del(`/startups/${id}`)
 export const getStartups      = (filters = {}) => get('/startups', { params: filters })

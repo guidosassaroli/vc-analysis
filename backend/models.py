@@ -32,6 +32,10 @@ class Startup(SQLModel, table=True):
     subscore_geography: Optional[float] = None   # 15%
     subscore_stage: Optional[float] = None       # 15%
 
+    # Analyst memory
+    user_notes: Optional[str] = None       # free-text analyst annotations
+    chat_history: Optional[str] = None     # JSON-serialised conversation
+
     # Due diligence memo sections
     memo_problem: Optional[str] = None
     memo_solution: Optional[str] = None
@@ -68,6 +72,8 @@ class StartupRead(SQLModel):
     subscore_market: Optional[float]
     subscore_geography: Optional[float]
     subscore_stage: Optional[float]
+    user_notes: Optional[str]
+    chat_history: Optional[str]
     memo_problem: Optional[str]
     memo_solution: Optional[str]
     memo_team: Optional[str]

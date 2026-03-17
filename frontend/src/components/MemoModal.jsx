@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { generateMemo, scoreStartup, chatWithStartup, updateStatus } from '../api'
+import { generateMemo, scoreStartup, chatWithStartup, updateStatus, updateNotes, saveChatHistory } from '../api'
 import { getScoreColor } from '../utils/scoreColors'
 import { getStatusClass, PIPELINE_STATUSES } from '../utils/statusColors'
 
@@ -63,6 +63,12 @@ const ChatIcon = () => (
 const SendIcon = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
     <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+  </svg>
+)
+
+const PencilIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
   </svg>
 )
 
@@ -197,7 +203,11 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
   const [generating, setGenerating] = useState(false)
   const [rescoring, setRescoring] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
-  const [chatMessages, setChatMessages] = useState([])
+  const [notes, setNotes] = useState(initialStartup.user_notes || '')
+  const [notesSaving, setNotesSaving] = useState(false)
+  const [chatMessages, setChatMessages] = useState(() => {
+    try { return JSON.parse(initialStartup.chat_history || '[]') } catch { return [] }
+  })
   const [chatInput, setChatInput] = useState('')
   const [chatSending, setChatSending] = useState(false)
   const modalRef = useRef(null)
@@ -262,6 +272,19 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
     }
   }
 
+  const handleNotesSave = async (value) => {
+    setNotesSaving(true)
+    try {
+      const updated = await updateNotes(startup.id, value)
+      setStartup(updated)
+      onUpdated?.(updated)
+    } catch (e) {
+      console.error('Notes save failed', e)
+    } finally {
+      setNotesSaving(false)
+    }
+  }
+
   const handleStatusChange = async (newStatus) => {
     setStatusUpdating(true)
     try {
@@ -279,12 +302,17 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
     const msg = (text ?? chatInput).trim()
     if (!msg || chatSending) return
     const userMsg = { role: 'user', content: msg }
-    setChatMessages(prev => [...prev, userMsg])
+    const updatedMessages = [...chatMessages, userMsg]
+    setChatMessages(updatedMessages)
     setChatInput('')
     setChatSending(true)
     try {
       const { reply } = await chatWithStartup(startup.id, msg, chatMessages)
-      setChatMessages(prev => [...prev, { role: 'assistant', content: reply }])
+      const assistantMsg = { role: 'assistant', content: reply }
+      const finalMessages = [...updatedMessages, assistantMsg]
+      setChatMessages(finalMessages)
+      // Persist conversation silently
+      saveChatHistory(startup.id, finalMessages).catch(() => {})
     } catch {
       setChatMessages(prev => [...prev, { role: 'assistant', content: 'Something went wrong. Please try again.' }])
     } finally {
@@ -367,6 +395,24 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
               <span className="break-words">{startup.founders}</span>
             </div>
           )}
+
+          {/* Analyst notes */}
+          <div className="mb-5">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <span className="text-slate-400"><PencilIcon /></span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Analyst Notes</span>
+              {notesSaving && <span className="text-xs text-slate-400 ml-1">Saving…</span>}
+            </div>
+            <textarea
+              rows={3}
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              onBlur={e => handleNotesSave(e.target.value)}
+              placeholder="Add context, corrections, or observations… Odiug will use these when rescoring."
+              className="w-full resize-none bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-sm text-slate-700
+                placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent"
+            />
+          </div>
 
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 mb-5">
             <p className="text-sm text-slate-600 leading-relaxed break-words">{startup.description}</p>
@@ -480,7 +526,7 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
           <div className="mt-6 border border-slate-200 rounded-xl overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3 bg-elaia-navy">
               <span className="text-white/80"><ChatIcon /></span>
-              <span className="text-sm font-semibold text-white">Ask Claude about {startup.name}</span>
+              <span className="text-sm font-semibold text-white">Ask Odiug about {startup.name}</span>
             </div>
 
             {/* Message list */}
@@ -574,8 +620,20 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={handleRescore} disabled={rescoring} className="btn-secondary text-xs disabled:opacity-60">
-              {rescoring ? 'Rescoring…' : '↺ Rescore'}
+            <button
+              onClick={handleRescore}
+              disabled={rescoring}
+              title={notes || startup.chat_history ? 'Will use your notes and chat feedback' : 'Score with Odiug'}
+              className="btn-secondary text-xs disabled:opacity-60 flex items-center gap-1.5"
+            >
+              {rescoring ? 'Rescoring…' : (
+                <>
+                  ↺ Rescore
+                  {(notes || startup.chat_history) && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Has analyst context" />
+                  )}
+                </>
+              )}
             </button>
             <button onClick={onClose} className="btn-secondary text-xs">Close</button>
           </div>

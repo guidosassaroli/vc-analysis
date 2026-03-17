@@ -62,6 +62,8 @@ def _run_migrations():
         ("startup", "subscore_market", "FLOAT"),
         ("startup", "subscore_geography", "FLOAT"),
         ("startup", "subscore_stage", "FLOAT"),
+        ("startup", "user_notes", "TEXT"),
+        ("startup", "chat_history", "TEXT"),
     ]
     # Use AUTOCOMMIT so each DDL statement is its own transaction — avoids
     # PostgreSQL leaving the connection in an aborted state on duplicate columns.
@@ -91,6 +93,12 @@ class FetchUrlRequest(BaseModel):
 
 class StatusUpdateRequest(BaseModel):
     status: str
+
+class NotesUpdateRequest(BaseModel):
+    user_notes: str
+
+class ChatHistoryRequest(BaseModel):
+    history: list  # list of {role, content} dicts
 
 class ChatMessage(BaseModel):
     role: str      # "user" | "assistant"
@@ -486,6 +494,31 @@ def update_status(startup_id: int, req: StatusUpdateRequest, session: Session = 
     session.commit()
     session.refresh(startup)
     return startup
+
+
+@app.patch("/api/startups/{startup_id}/notes", response_model=StartupRead)
+def update_notes(startup_id: int, req: NotesUpdateRequest, session: Session = Depends(get_session)):
+    """Save analyst notes for a startup."""
+    startup = session.get(Startup, startup_id)
+    if not startup:
+        raise HTTPException(status_code=404, detail="Startup not found")
+    startup.user_notes = req.user_notes
+    session.add(startup)
+    session.commit()
+    session.refresh(startup)
+    return startup
+
+
+@app.patch("/api/startups/{startup_id}/chat-history")
+def save_chat_history(startup_id: int, req: ChatHistoryRequest, session: Session = Depends(get_session)):
+    """Persist the chat conversation for a startup."""
+    startup = session.get(Startup, startup_id)
+    if not startup:
+        raise HTTPException(status_code=404, detail="Startup not found")
+    startup.chat_history = json.dumps(req.history, ensure_ascii=False)
+    session.add(startup)
+    session.commit()
+    return {"ok": True}
 
 
 @app.post("/api/startups/{startup_id}/chat")
