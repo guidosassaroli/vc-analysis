@@ -63,7 +63,7 @@ class FetchUrlRequest(BaseModel):
 
 
 class _TextExtractor(HTMLParser):
-    SKIP = {'script', 'style', 'noscript', 'nav', 'footer', 'head'}
+    SKIP = {'script', 'style', 'noscript', 'nav', 'head'}
 
     def __init__(self):
         super().__init__()
@@ -95,20 +95,20 @@ def _extract_startup_info(url: str, text: str) -> dict:
     prompt = (
         f"Extract startup info from this website content.\n"
         f"URL: {url}\n"
-        f"Content: {text[:4000]}\n\n"
+        f"Content: {text[:10000]}\n\n"
         "Return JSON with these fields:\n"
         '- name: company name (string)\n'
         '- description: 1-2 sentence description of what the company does, max 200 chars, factual and concise\n'
         '- sector: one of ["AI/ML","Biotech","Quantum","Cybersecurity","Climate Tech","Semiconductors","Fintech","Industrial Robotics","Software"]\n'
         '- stage: one of ["Pre-Seed","Seed","Series A","Series B"] if mentioned, else null\n'
         '- country: country where company is based, else null\n'
-        '- founders: founder names as a string, else null\n'
+        '- founders: names of founders or co-founders as a comma-separated string; look in team, about, and people sections; else null\n'
         f'- website: canonical website URL (use {url} if unclear)\n\n'
         "Return only valid JSON, no markdown."
     )
     response = client.messages.create(
         model=model,
-        max_tokens=512,
+        max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
     )
     raw = response.content[0].text.strip()

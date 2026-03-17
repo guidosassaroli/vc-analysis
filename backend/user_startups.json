@@ -53,5 +53,16 @@
     "website": "https://voltrac.eu/",
     "source": "manual",
     "hn_url": "https://voltrac.eu/"
+  },
+  {
+    "name": "Electrogenos",
+    "description": "Electrogenos manufactures electrolysers for green hydrogen production using a unique process that cuts costs and reduces factory deployment times.",
+    "sector": "Climate Tech",
+    "stage": "Unknown",
+    "country": "United Kingdom",
+    "founders": null,
+    "website": "https://electrogenos.co.uk/",
+    "source": "manual",
+    "hn_url": "https://electrogenos.co.uk/"
   }
 ]
