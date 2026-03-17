@@ -141,6 +141,14 @@ export default function Header({ onRefresh, onScoreAll, onCleared, onAdd }) {
               <div className="text-white font-bold text-lg leading-none tracking-tight">
                 Deal Flow Intelligence
               </div>
+              <a
+                href="https://www.linkedin.com/in/guido-sassaroli-778548169/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/50 hover:text-white/80 text-xs transition-colors"
+              >
+                by Guido Sassaroli ↗
+              </a>
             </div>
           </div>
 
