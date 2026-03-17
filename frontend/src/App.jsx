@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import Header from './components/Header'
-import StatsBar from './components/StatsBar'
 import FilterBar from './components/FilterBar'
 import StartupCard from './components/StartupCard'
 import AnalyticsPanel from './components/AnalyticsPanel'
@@ -128,11 +127,8 @@ export default function App() {
       <Header onRefresh={fetchData} onScoreAll={fetchData} onCleared={fetchData} onAdd={() => setShowAddModal(true)} />
 
       <main className="max-w-screen-2xl mx-auto px-6 py-8">
-        {/* Stats Bar */}
-        <StatsBar stats={stats} />
-
-        {/* Analytics Panel */}
-        {!loading && <AnalyticsPanel startups={allStartups} />}
+        {/* Analytics Panel (includes stats + charts) */}
+        {!loading && <AnalyticsPanel startups={allStartups} stats={stats} />}
 
         {/* Page Title */}
         <div className="flex items-center justify-between mb-4">
