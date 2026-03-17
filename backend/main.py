@@ -49,9 +49,27 @@ app.add_middleware(
 )
 
 
+def _run_migrations():
+    """Add new columns to existing tables without dropping data."""
+    import sqlalchemy
+    from database import engine
+    new_columns = [
+        ("startup", "funding", "VARCHAR"),
+        ("startup", "linkedin_url", "VARCHAR"),
+    ]
+    with engine.connect() as conn:
+        for table, col, col_type in new_columns:
+            try:
+                conn.execute(sqlalchemy.text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+                conn.commit()
+            except Exception:
+                pass  # column already exists
+
+
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
+    _run_migrations()
     _seed_if_empty()
 
 
@@ -64,28 +82,68 @@ class FetchUrlRequest(BaseModel):
 
 class _TextExtractor(HTMLParser):
     SKIP = {'script', 'style', 'noscript', 'nav', 'head'}
+    HEADINGS = {'h1', 'h2', 'h3'}
 
     def __init__(self):
         super().__init__()
         self._texts = []
         self._skip_depth = 0
+        self._current_heading = None
 
     def handle_starttag(self, tag, attrs):
         if tag in self.SKIP:
             self._skip_depth += 1
+        elif tag in self.HEADINGS:
+            self._current_heading = tag.upper()
 
     def handle_endtag(self, tag):
         if tag in self.SKIP:
             self._skip_depth = max(0, self._skip_depth - 1)
+        elif tag in self.HEADINGS:
+            self._current_heading = None
 
     def handle_data(self, data):
         if not self._skip_depth:
             t = data.strip()
             if t:
-                self._texts.append(t)
+                if self._current_heading:
+                    self._texts.append(f'[{self._current_heading}] {t}')
+                else:
+                    self._texts.append(t)
 
     def get_text(self):
         return re.sub(r'\s+', ' ', ' '.join(self._texts))
+
+
+_TEAM_SUBPATHS = ['/about', '/team', '/about-us', '/company', '/people', '/founders']
+
+_HTTP_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+}
+
+
+def _html_to_text(html: str) -> str:
+    if len(html) > 300_000:
+        html = html[:300_000]
+    try:
+        extractor = _TextExtractor()
+        extractor.feed(html)
+        return extractor.get_text()
+    except Exception:
+        return ""
+
+
+async def _fetch_subpage_text(client: httpx.AsyncClient, base_url: str, path: str) -> str:
+    """Try fetching a subpage; return its text or empty string on any error."""
+    from urllib.parse import urlparse, urlunparse
+    parsed = urlparse(base_url)
+    subpage_url = urlunparse((parsed.scheme, parsed.netloc, path, '', '', ''))
+    try:
+        resp = await client.get(subpage_url, timeout=httpx.Timeout(8.0, connect=4.0))
+        resp.raise_for_status()
+        return _html_to_text(resp.text)
+    except Exception:
+        return ""
 
 
 def _extract_startup_info(url: str, text: str) -> dict:
@@ -93,16 +151,19 @@ def _extract_startup_info(url: str, text: str) -> dict:
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
     prompt = (
-        f"Extract startup info from this website content.\n"
+        f"Extract startup info from this website content. Headings are marked [H1]/[H2]/[H3] to help locate sections.\n"
         f"URL: {url}\n"
-        f"Content: {text[:10000]}\n\n"
+        f"Content: {text[:12000]}\n\n"
         "Return JSON with these fields:\n"
         '- name: company name (string)\n'
         '- description: 1-2 sentence description of what the company does, max 200 chars, factual and concise\n'
         '- sector: one of ["AI/ML","Biotech","Quantum","Cybersecurity","Climate Tech","Semiconductors","Fintech","Industrial Robotics","Software"]\n'
         '- stage: one of ["Pre-Seed","Seed","Series A","Series B"] if mentioned, else null\n'
         '- country: country where company is based, else null\n'
-        '- founders: names of founders or co-founders as a comma-separated string; look in team, about, and people sections; else null\n'
+        '- founded_year: integer year the company was founded if mentioned, else null\n'
+        '- founders: names of founders or co-founders as a comma-separated string; look carefully in [H2]/[H3] team, about, people, and founders sections; else null\n'
+        '- funding: funding info as a short string (e.g. "Raised $2M Seed") if mentioned, else null\n'
+        '- linkedin_url: LinkedIn company page URL if present in the content, else null\n'
         f'- website: canonical website URL (use {url} if unclear)\n\n'
         "Return only valid JSON, no markdown."
     )
@@ -112,7 +173,6 @@ def _extract_startup_info(url: str, text: str) -> dict:
         messages=[{"role": "user", "content": prompt}],
     )
     raw = response.content[0].text.strip()
-    # Strip markdown code fences if present
     if raw.startswith("```"):
         raw = re.sub(r"^```[a-z]*\n?", "", raw)
         raw = re.sub(r"\n?```$", "", raw)
@@ -201,41 +261,42 @@ def list_startups(
 
 @app.post("/api/startups/from-url", response_model=StartupRead)
 async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_session)):
-    """Fetch a startup's website, extract info with Claude, create and return it."""
+    """Fetch a startup's website (+ team/about subpages), extract info with Claude, score and return it."""
     url = req.url
 
-    try:
-        async with httpx.AsyncClient(
-            timeout=httpx.Timeout(10.0, connect=5.0),
-            follow_redirects=True,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"},
-        ) as client:
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(10.0, connect=5.0),
+        follow_redirects=True,
+        headers=_HTTP_HEADERS,
+    ) as client:
+        # Fetch homepage
+        try:
             resp = await client.get(url)
             resp.raise_for_status()
-            html = resp.text
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Could not fetch page: {e}")
+            homepage_text = _html_to_text(resp.text)
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"Could not fetch page: {e}")
 
-    # Truncate very large pages before parsing (Framer/JS-heavy sites can be 500KB+)
-    if len(html) > 300_000:
-        html = html[:300_000]
+        if len(homepage_text) < 100:
+            raise HTTPException(
+                status_code=422,
+                detail="Not enough readable text on this page. It may require JavaScript to render (e.g. Framer, React SPA). Try pasting the startup's details manually."
+            )
 
-    try:
-        extractor = _TextExtractor()
-        extractor.feed(html)
-        text = extractor.get_text()
-    except Exception:
-        text = ""
+        # Concurrently fetch team/about subpages to find founders
+        subpage_tasks = [_fetch_subpage_text(client, url, path) for path in _TEAM_SUBPATHS]
+        subpage_texts = await asyncio.gather(*subpage_tasks)
 
-    if len(text) < 100:
-        raise HTTPException(
-            status_code=422,
-            detail="Not enough readable text on this page. It may require JavaScript to render (e.g. Framer, React SPA). Try pasting the startup's details manually."
-        )
+    # Combine: homepage first, then unique subpage content (skip duplicates of homepage)
+    combined_parts = [homepage_text]
+    for sub_text in subpage_texts:
+        if sub_text and sub_text[:200] != homepage_text[:200]:  # skip identical pages
+            combined_parts.append(sub_text)
+    combined_text = ' '.join(combined_parts)
 
     loop = asyncio.get_running_loop()
     try:
-        info = await loop.run_in_executor(None, _extract_startup_info, url, text)
+        info = await loop.run_in_executor(None, _extract_startup_info, url, combined_text)
     except (json.JSONDecodeError, KeyError, IndexError) as e:
         raise HTTPException(status_code=422, detail=f"Could not parse startup info: {e}")
     except Exception as e:
@@ -252,7 +313,10 @@ async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_
         "sector": info.get("sector", "Software"),
         "stage": info.get("stage") or "Unknown",
         "country": info.get("country", "Unknown"),
+        "founded_year": info.get("founded_year"),
         "founders": info.get("founders"),
+        "funding": info.get("funding"),
+        "linkedin_url": info.get("linkedin_url"),
         "website": website,
         "source": "manual",
         "hn_url": url,
@@ -262,6 +326,36 @@ async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_
     session.commit()
     _save_user_startup(startup_data)
     session.refresh(startup)
+
+    # Auto-score inline so the card appears with a score immediately
+    try:
+        result = await loop.run_in_executor(None, score_startup, startup.__dict__.copy())
+        startup.fit_score = result.get("fit_score")
+        startup.score_rationale = result.get("rationale")
+        startup.red_flag = result.get("red_flag")
+        startup.scored_at = result.get("scored_at")
+
+        startup_dict_for_memo = {
+            "name": startup.name,
+            "description": startup.description,
+            "sector": startup.sector,
+            "stage": startup.stage,
+            "country": startup.country,
+            "founders": startup.founders,
+            "fit_score": startup.fit_score,
+            "score_rationale": startup.score_rationale,
+            "red_flag": startup.red_flag,
+        }
+        memo = await loop.run_in_executor(None, generate_memo, startup_dict_for_memo)
+        for k, v in memo.items():
+            setattr(startup, k, v)
+
+        session.add(startup)
+        session.commit()
+        session.refresh(startup)
+    except Exception:
+        pass  # scoring failure must not block the startup from being added
+
     return startup
 
 

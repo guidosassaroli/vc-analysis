@@ -13,6 +13,8 @@ class Startup(SQLModel, table=True):
     founded_year: Optional[int] = None
     website: Optional[str] = None
     founders: Optional[str] = None  # comma-separated list
+    funding: Optional[str] = None   # e.g. "Raised $2M Seed"
+    linkedin_url: Optional[str] = None
     source: str = "seed"  # "hn" | "seed"
     hn_url: Optional[str] = None
     hn_points: Optional[int] = None
@@ -44,6 +46,8 @@ class StartupRead(SQLModel):
     founded_year: Optional[int]
     website: Optional[str]
     founders: Optional[str]
+    funding: Optional[str]
+    linkedin_url: Optional[str]
     source: str
     hn_url: Optional[str]
     hn_points: Optional[int]
