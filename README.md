@@ -1,4 +1,4 @@
-# Elaia — Deal Flow Intelligence Dashboard
+# Deal Flow Intelligence Dashboard
 
 A full-stack VC deal flow intelligence tool built for Elaia Partners. Fetches startups from public sources, scores them against Elaia's investment thesis using a multi-dimensional AI scoring engine, and generates structured due diligence memos — with multi-user auth, analyst memory, pipeline tracking, and interactive AI-powered research.
 
