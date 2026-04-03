@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Deal Flow Intelligence — AI-powered deal flow for deep tech VCs</title>
-  <meta name="description" content="Source, score, and track European deep tech startups with AI that understands your investment thesis. Built for VC analysts." />
+  <meta name="description" content="Source, score, and track European deep tech startups with AI that understands your investment thesis. Your personal research vault, always in sync." />
   <meta property="og:title" content="Deal Flow Intelligence" />
   <meta property="og:description" content="AI-powered deal flow for deep tech VCs. Score startups, generate DD memos, and track your pipeline — in seconds." />
   <meta property="og:type" content="website" />
@@ -17,9 +17,7 @@
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: {
-            sans: ['"Inter var"', '"Inter"', 'system-ui', 'sans-serif'],
-          },
+          fontFamily: { sans: ['"Inter var"', '"Inter"', 'system-ui', 'sans-serif'] },
           colors: {
             teal: { DEFAULT: '#0e847f', dark: '#0a6b66', light: '#14a89e' },
             ink:  { DEFAULT: '#0f172a', mid: '#1e293b' },
@@ -28,575 +26,898 @@
       }
     }
   </script>
+
   <style>
+    /* ── Base ── */
     html {
       font-optical-sizing: auto;
       font-feature-settings: 'cv11' 1, 'ss01' 1, 'zero' 1, 'calt' 1;
       -webkit-font-smoothing: antialiased;
       scroll-behavior: smooth;
     }
-    body { letter-spacing: -0.012em; }
+    body { letter-spacing: -0.012em; overflow-x: hidden; }
     h1, h2, h3 { letter-spacing: -0.025em; }
     .numeral { font-variant-numeric: tabular-nums lining-nums; }
 
-    /* Hero radial glow */
-    .hero-glow {
-      background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(14,132,127,0.18) 0%, transparent 70%);
+    /* ── Noise texture on dark sections ── */
+    .noise {
+      position: relative;
+    }
+    .noise::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.025;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .noise > * { position: relative; z-index: 1; }
+
+    /* ── Floating orbs ── */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      will-change: transform;
+    }
+    @keyframes floatA {
+      0%,100% { transform: translate(0,0) scale(1); }
+      30%      { transform: translate(40px,-50px) scale(1.06); }
+      60%      { transform: translate(-30px,30px) scale(0.96); }
+    }
+    @keyframes floatB {
+      0%,100% { transform: translate(0,0) scale(1); }
+      40%      { transform: translate(-50px,40px) scale(1.08); }
+      70%      { transform: translate(30px,-20px) scale(0.95); }
+    }
+    @keyframes floatC {
+      0%,100% { transform: translate(0,0); }
+      50%      { transform: translate(20px,30px); }
     }
 
-    /* Grid pattern */
-    .grid-bg {
-      background-image:
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 56px 56px;
-    }
-
-    /* Scroll reveal */
+    /* ── Scroll reveal ── */
     .reveal {
       opacity: 0;
-      transform: translateY(18px);
-      transition: opacity 0.55s cubic-bezier(0.16,1,0.3,1), transform 0.55s cubic-bezier(0.16,1,0.3,1);
+      transform: translateY(24px);
+      transition: opacity 0.65s cubic-bezier(0.16,1,0.3,1),
+                  transform 0.65s cubic-bezier(0.16,1,0.3,1);
     }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal.from-left  { transform: translateX(-28px); }
+    .reveal.from-right { transform: translateX(28px); }
+    .reveal.visible { opacity: 1; transform: translate(0,0); }
 
-    /* Score ring draw */
-    @keyframes drawRing {
-      from { stroke-dashoffset: var(--ring-full); }
-      to   { stroke-dashoffset: var(--ring-offset); }
+    /* ── Score ring draw ── */
+    .ring-draw {
+      stroke-dashoffset: var(--full);
+      transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1) 0.3s;
     }
-    .ring-animate {
-      animation: drawRing 1.2s cubic-bezier(0.4,0,0.2,1) 0.6s both;
+    .ring-draw.animate { stroke-dashoffset: var(--offset); }
+
+    /* ── Bar fill ── */
+    .bar-fill {
+      width: 0%;
+      transition: width 1s cubic-bezier(0.4,0,0.2,1) 0.4s;
+    }
+    .bar-fill.animate { width: var(--w); }
+
+    /* ── Typing cursor ── */
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+    .cursor { display: inline-block; animation: blink 1s step-end infinite; }
+
+    /* ── Floating card bob ── */
+    @keyframes bob {
+      0%,100% { transform: translateY(0px); }
+      50%      { transform: translateY(-8px); }
+    }
+    .bob-1 { animation: bob 5s ease-in-out infinite; }
+    .bob-2 { animation: bob 5s ease-in-out infinite; animation-delay: -2s; }
+    .bob-3 { animation: bob 5s ease-in-out infinite; animation-delay: -3.5s; }
+
+    /* ── Gradient shimmer on text ── */
+    .gradient-text {
+      background: linear-gradient(135deg, #14a89e 0%, #0e847f 50%, #5eead4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
-    /* Subtle card hover */
-    .feature-card {
-      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04);
-      transition: box-shadow 0.2s ease;
+    /* ── Glow card border ── */
+    .glow-card {
+      position: relative;
     }
-    .feature-card:hover {
-      box-shadow: 0 6px 20px 0 rgb(0 0 0 / 0.08);
+    .glow-card::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(14,132,127,0.4), transparent 60%);
+      z-index: -1;
+      opacity: 0;
+      transition: opacity 0.3s;
     }
+    .glow-card:hover::before { opacity: 1; }
+
+    /* ── Orbit ring ── */
+    @keyframes orbit {
+      from { transform: rotate(0deg) translateX(120px) rotate(0deg); }
+      to   { transform: rotate(360deg) translateX(120px) rotate(-360deg); }
+    }
+    @keyframes orbitReverse {
+      from { transform: rotate(0deg) translateX(80px) rotate(0deg); }
+      to   { transform: rotate(-360deg) translateX(80px) rotate(360deg); }
+    }
+
+    /* ── Pulse dot ── */
+    @keyframes pulse-ring {
+      0%   { transform: scale(1);   opacity: 0.6; }
+      100% { transform: scale(2.5); opacity: 0; }
+    }
+    .pulse-ring::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: #0e847f;
+      animation: pulse-ring 2s cubic-bezier(0.4,0,0.6,1) infinite;
+    }
+
+    /* ── Stats counter ── */
+    .stat-num { display: inline-block; }
+
+    /* ── Feature card ── */
+    .feat-card {
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.05);
+      transition: box-shadow 0.25s ease, transform 0.25s ease;
+    }
+    .feat-card:hover {
+      box-shadow: 0 8px 30px rgb(0 0 0 / 0.1);
+      transform: translateY(-2px);
+    }
+
+    /* ── Score update flash ── */
+    @keyframes scoreUp {
+      0%  { color: #64748b; }
+      30% { color: #16a34a; transform: scale(1.15); }
+      100%{ color: #16a34a; }
+    }
+    .score-update { animation: scoreUp 0.6s cubic-bezier(0.16,1,0.3,1) forwards; }
+
+    /* ── Marquee ── */
+    @keyframes marquee {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+    .marquee-inner { animation: marquee 28s linear infinite; }
+    .marquee-inner:hover { animation-play-state: paused; }
   </style>
 </head>
 <body class="bg-white font-sans text-slate-900">
 
-  <!-- ─── NAV ─────────────────────────────────────────────────────────────── -->
-  <nav class="fixed top-0 inset-x-0 z-50 bg-ink/95 backdrop-blur-md border-b border-white/[0.06]">
-    <div class="max-w-6xl mx-auto px-6 h-[52px] flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <polygon points="4,28 8,28 10,20 6,20" fill="white" opacity="0.4"/>
-          <polygon points="11,28 15,28 19,14 15,14" fill="white" opacity="0.65"/>
-          <polygon points="18,28 22,28 27,7 23,7" fill="white"/>
-          <circle cx="26" cy="4" r="2.5" fill="white"/>
-        </svg>
-        <span class="text-white font-semibold text-[13.5px] tracking-tight">Deal Flow Intelligence</span>
-      </div>
+<!-- ─── NAV ────────────────────────────────────────────────────────────────── -->
+<nav class="fixed top-0 inset-x-0 z-50 bg-ink/90 backdrop-blur-xl border-b border-white/[0.06]">
+  <div class="max-w-6xl mx-auto px-6 h-[52px] flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <polygon points="4,28 8,28 10,20 6,20" fill="white" opacity="0.4"/>
+        <polygon points="11,28 15,28 19,14 15,14" fill="white" opacity="0.65"/>
+        <polygon points="18,28 22,28 27,7 23,7" fill="white"/>
+        <circle cx="26" cy="4" r="2.5" fill="white"/>
+      </svg>
+      <span class="text-white font-semibold text-[13.5px] tracking-tight">Deal Flow Intelligence</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="#features" class="text-white/40 hover:text-white/70 text-[13px] transition-colors hidden sm:block">Features</a>
+      <a href="#vault" class="text-white/40 hover:text-white/70 text-[13px] transition-colors hidden sm:block">Your data</a>
       <a
         href="https://vc-analysis.vercel.app"
-        target="_blank"
-        rel="noopener noreferrer"
+        target="_blank" rel="noopener noreferrer"
         class="inline-flex items-center gap-1.5 bg-teal hover:bg-teal-dark text-white text-[13px] font-semibold px-4 py-[7px] rounded-lg transition-colors"
       >
         Try the tool
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"/>
-        </svg>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"/></svg>
       </a>
     </div>
-  </nav>
+  </div>
+</nav>
 
-  <!-- ─── HERO ─────────────────────────────────────────────────────────────── -->
-  <section class="bg-ink hero-glow grid-bg pt-32 pb-28 px-6 relative overflow-hidden">
-    <div class="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+<!-- ─── HERO ────────────────────────────────────────────────────────────────── -->
+<section class="bg-ink noise pt-32 pb-24 px-6 relative overflow-hidden min-h-screen flex items-center">
 
-    <div class="max-w-6xl mx-auto">
-      <div class="grid lg:grid-cols-[1fr_420px] gap-16 items-center">
+  <!-- Ambient orbs -->
+  <div class="orb w-[500px] h-[500px] bg-teal/20 top-[-100px] right-[-80px]" style="animation: floatA 10s ease-in-out infinite;"></div>
+  <div class="orb w-[350px] h-[350px] bg-violet-600/15 bottom-[0px] left-[-100px]" style="animation: floatB 14s ease-in-out infinite; animation-delay:-5s;"></div>
+  <div class="orb w-[200px] h-[200px] bg-teal/10 top-[40%] left-[35%]" style="animation: floatC 8s ease-in-out infinite; animation-delay:-3s;"></div>
 
-        <!-- Copy -->
-        <div>
-          <div class="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-3.5 py-1.5 text-[11.5px] text-white/55 font-medium mb-8 tracking-wide">
-            <span class="w-1.5 h-1.5 rounded-full bg-teal-light animate-pulse" aria-hidden="true"></span>
-            Built for European deep tech investors
-          </div>
+  <!-- Fine grid -->
+  <div class="absolute inset-0 opacity-[0.04]" style="background-image: linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px); background-size: 48px 48px;"></div>
 
-          <h1 class="text-[52px] leading-[1.06] font-bold text-white mb-6">
-            Deal flow<br>
-            intelligence<br>
-            <span class="text-teal-light">at analyst speed.</span>
-          </h1>
+  <div class="max-w-6xl mx-auto w-full relative">
+    <div class="grid lg:grid-cols-[1fr_480px] gap-12 items-center">
 
-          <p class="text-[17px] text-slate-400 leading-relaxed mb-10 max-w-lg">
-            Source startups, score them against your thesis in seconds, and generate full due diligence memos — powered by AI that understands deep tech investing.
-          </p>
-
-          <div class="flex items-center gap-4 flex-wrap">
-            <a
-              href="https://vc-analysis.vercel.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center gap-2 bg-teal hover:bg-teal-dark text-white font-semibold text-[15px] px-6 py-3.5 rounded-xl transition-all hover:shadow-lg hover:shadow-teal/20"
-            >
-              Try the tool — it's free
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"/>
-              </svg>
-            </a>
-            <a href="#features" class="text-[14px] text-white/35 hover:text-white/65 transition-colors">
-              See how it works ↓
-            </a>
-          </div>
+      <!-- Copy -->
+      <div>
+        <div class="inline-flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-[11.5px] text-white/50 font-medium mb-8 tracking-wide reveal">
+          <span class="relative w-2 h-2 pulse-ring rounded-full bg-teal-light shrink-0" aria-hidden="true"></span>
+          Built for European deep tech investors
         </div>
 
-        <!-- UI Mockup -->
-        <div class="hidden lg:block" aria-hidden="true">
-          <div class="bg-white/[0.04] border border-white/10 rounded-2xl p-4 space-y-2.5">
+        <h1 class="text-[56px] lg:text-[68px] leading-[1.03] font-bold text-white mb-6 reveal" style="transition-delay:.05s">
+          Your unfair<br>
+          advantage in<br>
+          <span class="gradient-text">deal flow.</span>
+        </h1>
 
-            <!-- Card 1 -->
-            <div class="bg-white rounded-xl p-4 flex items-start gap-3">
-              <div class="flex-1 min-w-0 space-y-1.5">
-                <div class="flex items-center gap-2">
-                  <span class="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                    <span class="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0"></span>
-                    AI/ML
-                  </span>
-                  <span class="text-[9.5px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-semibold tracking-wide">IN REVIEW</span>
-                </div>
-                <p class="text-[13px] font-semibold text-slate-900 tracking-tight truncate">NeuralBridge AI</p>
-                <p class="text-[11px] text-slate-400">🇫🇷 France · 2023 · Seed · Curated</p>
-                <p class="text-[11.5px] text-slate-500 leading-relaxed line-clamp-2">Open-source inference infrastructure for deploying large language models at the edge with sub-10ms latency.</p>
-              </div>
-              <div class="relative w-11 h-11 shrink-0 flex items-center justify-center">
-                <svg class="absolute inset-0 -rotate-90" width="44" height="44" viewBox="0 0 44 44">
-                  <circle cx="22" cy="22" r="17" fill="none" stroke="#f1f5f9" stroke-width="2.5"/>
-                  <circle cx="22" cy="22" r="17" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"
-                    stroke-dasharray="106.8" stroke-dashoffset="29"
-                    class="ring-animate" style="--ring-full:106.8; --ring-offset:29"/>
-                </svg>
-                <span class="relative text-[12px] font-semibold text-green-600 numeral">73</span>
-              </div>
-            </div>
-
-            <!-- Card 2 -->
-            <div class="bg-white rounded-xl p-4 flex items-start gap-3 opacity-80">
-              <div class="flex-1 min-w-0 space-y-1.5">
-                <span class="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                  <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0"></span>
-                  Quantum
-                </span>
-                <p class="text-[13px] font-semibold text-slate-900 tracking-tight truncate">QubitSystems</p>
-                <p class="text-[11px] text-slate-400">🇩🇪 Germany · 2022 · Series A · HN</p>
-              </div>
-              <div class="relative w-11 h-11 shrink-0 flex items-center justify-center">
-                <svg class="absolute inset-0 -rotate-90" width="44" height="44" viewBox="0 0 44 44">
-                  <circle cx="22" cy="22" r="17" fill="none" stroke="#f1f5f9" stroke-width="2.5"/>
-                  <circle cx="22" cy="22" r="17" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"
-                    stroke-dasharray="106.8" stroke-dashoffset="18"/>
-                </svg>
-                <span class="relative text-[12px] font-semibold text-green-600 numeral">83</span>
-              </div>
-            </div>
-
-            <!-- Card 3 -->
-            <div class="bg-white rounded-xl p-4 flex items-start gap-3 opacity-55">
-              <div class="flex-1 min-w-0 space-y-1.5">
-                <span class="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
-                  Biotech
-                </span>
-                <p class="text-[13px] font-semibold text-slate-900 tracking-tight truncate">Cellara Bio</p>
-                <p class="text-[11px] text-slate-400">🇫🇷 France · 2023 · Pre-Seed · News</p>
-              </div>
-              <div class="relative w-11 h-11 shrink-0 flex items-center justify-center">
-                <svg class="absolute inset-0 -rotate-90" width="44" height="44" viewBox="0 0 44 44">
-                  <circle cx="22" cy="22" r="17" fill="none" stroke="#f1f5f9" stroke-width="2.5"/>
-                  <circle cx="22" cy="22" r="17" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round"
-                    stroke-dasharray="106.8" stroke-dashoffset="59"/>
-                </svg>
-                <span class="relative text-[12px] font-semibold text-amber-600 numeral">45</span>
-              </div>
-            </div>
-
-            <!-- Score all button -->
-            <div class="flex items-center justify-center gap-1.5 bg-teal text-white text-[12px] font-semibold py-2.5 rounded-lg">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-              </svg>
-              Score All
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── STATS BAR ─────────────────────────────────────────────────────────── -->
-  <section class="bg-slate-50 border-b border-slate-100 py-10 px-6">
-    <div class="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-      <div class="reveal">
-        <p class="text-[32px] font-bold tracking-tight text-slate-900 numeral leading-none">5</p>
-        <p class="text-[13px] text-slate-500 mt-2">AI scoring dimensions</p>
-      </div>
-      <div class="reveal" style="transition-delay:.07s">
-        <p class="text-[32px] font-bold tracking-tight text-slate-900 leading-none">&lt;30s</p>
-        <p class="text-[13px] text-slate-500 mt-2">to score a startup</p>
-      </div>
-      <div class="reveal" style="transition-delay:.14s">
-        <p class="text-[32px] font-bold tracking-tight text-slate-900 numeral leading-none">6</p>
-        <p class="text-[13px] text-slate-500 mt-2">DD memo sections</p>
-      </div>
-      <div class="reveal" style="transition-delay:.21s">
-        <p class="text-[32px] font-bold tracking-tight text-slate-900 leading-none">∞</p>
-        <p class="text-[13px] text-slate-500 mt-2">startups in your pipeline</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── FEATURES ─────────────────────────────────────────────────────────── -->
-  <section id="features" class="py-24 px-6">
-    <div class="max-w-6xl mx-auto">
-
-      <div class="max-w-lg mb-16 reveal">
-        <p class="text-[11.5px] font-semibold uppercase tracking-widest text-teal mb-3">Features</p>
-        <h2 class="text-[38px] font-bold text-slate-900 mb-4 leading-tight">Everything from sourcing<br>to term sheet.</h2>
-        <p class="text-[15.5px] text-slate-500 leading-relaxed">
-          A complete intelligence layer for your deal flow — from first signal to investment committee.
+        <p class="text-[17px] text-slate-400 leading-relaxed mb-10 max-w-lg reveal" style="transition-delay:.1s">
+          Source startups, score them against your thesis in seconds, and generate full due diligence memos — with AI that reads your notes and adapts to your thinking.
         </p>
+
+        <div class="flex items-center gap-4 flex-wrap reveal" style="transition-delay:.15s">
+          <a
+            href="https://vc-analysis.vercel.app"
+            target="_blank" rel="noopener noreferrer"
+            class="inline-flex items-center gap-2 bg-teal hover:bg-teal-dark text-white font-semibold text-[15px] px-7 py-3.5 rounded-xl transition-all duration-200 hover:shadow-[0_0_30px_rgba(14,132,127,0.4)] hover:scale-[1.02]"
+          >
+            Try the tool — it's free
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"/></svg>
+          </a>
+          <a href="#features" class="text-[14px] text-white/30 hover:text-white/60 transition-colors">
+            See how it works ↓
+          </a>
+        </div>
       </div>
 
-      <div class="grid md:grid-cols-2 gap-4">
+      <!-- Floating card stack -->
+      <div class="hidden lg:block relative h-[480px]" aria-hidden="true">
 
-        <!-- Feature: AI Scoring -->
-        <div class="feature-card border border-slate-200/80 rounded-2xl p-7 bg-white reveal">
-          <div class="w-8 h-8 rounded-lg bg-teal/10 flex items-center justify-center mb-5">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0e847f" stroke-width="2.25" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-            </svg>
-          </div>
-          <h3 class="text-[17px] font-semibold text-slate-900 mb-2.5 tracking-tight">Multi-dimensional AI scoring</h3>
-          <p class="text-[14px] text-slate-500 leading-relaxed mb-6">
-            Each startup is scored across 5 dimensions independently — Team, Technology, Market, Geography, Stage — preventing anchoring bias. Weighted into one fit score.
-          </p>
-          <!-- Score bars -->
-          <div class="space-y-2.5">
-            <div class="flex items-center gap-3 text-[12px]">
-              <span class="text-slate-500 w-[88px] shrink-0">Team</span>
-              <div class="flex-1 bg-slate-100 rounded-full h-[5px]"><div class="bg-teal h-[5px] rounded-full" style="width:82%"></div></div>
-              <span class="text-slate-600 font-semibold numeral w-5 text-right">82</span>
-            </div>
-            <div class="flex items-center gap-3 text-[12px]">
-              <span class="text-slate-500 w-[88px] shrink-0">Technology</span>
-              <div class="flex-1 bg-slate-100 rounded-full h-[5px]"><div class="bg-teal h-[5px] rounded-full" style="width:76%"></div></div>
-              <span class="text-slate-600 font-semibold numeral w-5 text-right">76</span>
-            </div>
-            <div class="flex items-center gap-3 text-[12px]">
-              <span class="text-slate-500 w-[88px] shrink-0">Market</span>
-              <div class="flex-1 bg-slate-100 rounded-full h-[5px]"><div class="bg-amber-400 h-[5px] rounded-full" style="width:61%"></div></div>
-              <span class="text-slate-600 font-semibold numeral w-5 text-right">61</span>
-            </div>
-            <div class="flex items-center gap-3 text-[12px]">
-              <span class="text-slate-500 w-[88px] shrink-0">Geography</span>
-              <div class="flex-1 bg-slate-100 rounded-full h-[5px]"><div class="bg-teal h-[5px] rounded-full" style="width:90%"></div></div>
-              <span class="text-slate-600 font-semibold numeral w-5 text-right">90</span>
-            </div>
-            <div class="flex items-center gap-3 text-[12px]">
-              <span class="text-slate-500 w-[88px] shrink-0">Stage fit</span>
-              <div class="flex-1 bg-slate-100 rounded-full h-[5px]"><div class="bg-teal h-[5px] rounded-full" style="width:85%"></div></div>
-              <span class="text-slate-600 font-semibold numeral w-5 text-right">85</span>
-            </div>
-            <div class="pt-3 border-t border-slate-50 flex items-center justify-between">
-              <span class="text-[12px] text-slate-400">Weighted fit score</span>
-              <span class="text-[15px] font-bold text-teal numeral">79 / 100</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Feature: DD Memos -->
-        <div class="feature-card border border-slate-200/80 rounded-2xl p-7 bg-white reveal" style="transition-delay:.08s">
-          <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center mb-5">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.25" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-            </svg>
-          </div>
-          <h3 class="text-[17px] font-semibold text-slate-900 mb-2.5 tracking-tight">Full DD memos in seconds</h3>
-          <p class="text-[14px] text-slate-500 leading-relaxed mb-6">
-            Structured 6-section due diligence memos generated instantly. Problem, Solution, Team, Traction, Thesis Fit, Red Flags — written with analyst-level precision and regenerable at any time.
-          </p>
-          <!-- Memo preview -->
-          <div class="border border-slate-100 rounded-xl overflow-hidden">
-            <div class="bg-slate-900 px-4 py-3 flex items-center justify-between">
-              <span class="text-white font-semibold text-[13px] tracking-tight">NeuralBridge AI</span>
-              <span class="text-teal-light text-[11px] font-bold numeral">79 / 100</span>
-            </div>
-            <div>
-              <div class="px-4 py-3 border-b border-slate-50">
-                <p class="text-[10.5px] font-semibold text-teal uppercase tracking-wider mb-1.5">Problem</p>
-                <div class="space-y-1"><div class="h-2 bg-slate-100 rounded-full w-full"></div><div class="h-2 bg-slate-100 rounded-full w-4/5"></div></div>
+        <!-- Card 1 — top, slightly rotated -->
+        <div class="absolute top-0 right-4 w-[320px] bob-1" style="transform-origin: center;">
+          <div class="bg-white/[0.06] backdrop-blur-sm border border-white/15 rounded-2xl p-4 shadow-2xl">
+            <div class="flex items-start gap-3">
+              <div class="flex-1 space-y-1.5">
+                <div class="flex items-center gap-2">
+                  <span class="flex items-center gap-1.5 text-[11px] font-medium text-white/60">
+                    <span class="w-1.5 h-1.5 rounded-full bg-violet-400"></span> AI/ML
+                  </span>
+                  <span class="text-[9.5px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded font-semibold tracking-wide border border-blue-400/20">IN REVIEW</span>
+                </div>
+                <p class="text-[13px] font-semibold text-white tracking-tight">NeuralBridge AI</p>
+                <p class="text-[11px] text-white/40">🇫🇷 France · 2023 · Seed</p>
+                <p class="text-[11.5px] text-white/50 leading-relaxed line-clamp-2">Edge inference infrastructure with sub-10ms latency. INRIA spinout.</p>
               </div>
-              <div class="px-4 py-3 border-b border-slate-50">
-                <p class="text-[10.5px] font-semibold text-teal uppercase tracking-wider mb-1.5">Team Assessment</p>
-                <div class="space-y-1"><div class="h-2 bg-slate-100 rounded-full w-full"></div><div class="h-2 bg-slate-100 rounded-full w-3/5"></div></div>
-              </div>
-              <div class="px-4 py-3">
-                <p class="text-[10.5px] font-semibold text-teal uppercase tracking-wider mb-1.5">Thesis Fit</p>
-                <div class="space-y-1"><div class="h-2 bg-slate-100 rounded-full w-11/12"></div><div class="h-2 bg-slate-100 rounded-full w-2/3"></div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Feature: Pipeline -->
-        <div class="feature-card border border-slate-200/80 rounded-2xl p-7 bg-white reveal" style="transition-delay:.16s">
-          <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center mb-5">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.25" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
-            </svg>
-          </div>
-          <h3 class="text-[17px] font-semibold text-slate-900 mb-2.5 tracking-tight">Pipeline tracking built in</h3>
-          <p class="text-[14px] text-slate-500 leading-relaxed mb-6">
-            Move every startup through your pipeline — Sourced, In Review, Meeting Booked, Term Sheet, Pass. Analyst notes, chat history, and status all persist across sessions.
-          </p>
-          <!-- Pipeline stages -->
-          <div class="flex items-center gap-1.5">
-            <div class="flex-1 text-center py-1.5 bg-slate-100 text-slate-500 text-[10px] font-semibold rounded-lg">Sourced</div>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
-            </svg>
-            <div class="flex-1 text-center py-1.5 bg-blue-50 text-blue-600 text-[10px] font-semibold rounded-lg">In Review</div>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
-            </svg>
-            <div class="flex-1 text-center py-1.5 bg-violet-50 text-violet-600 text-[10px] font-semibold rounded-lg">Meeting</div>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/>
-            </svg>
-            <div class="flex-1 text-center py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-semibold rounded-lg">Term Sheet</div>
-          </div>
-          <!-- AI chat hint -->
-          <div class="mt-4 border border-slate-100 rounded-xl p-3.5 flex items-start gap-2.5">
-            <div class="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center shrink-0 mt-0.5">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
-              </svg>
-            </div>
-            <div>
-              <p class="text-[11.5px] text-slate-700 leading-relaxed">"Who are the main competitors and what is the defensibility of their approach?"</p>
-              <p class="text-[10.5px] text-slate-400 mt-1">Ask anything — answers grounded in all available data</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Feature: Add from URL -->
-        <div class="feature-card border border-slate-200/80 rounded-2xl p-7 bg-white reveal" style="transition-delay:.24s">
-          <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center mb-5">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.25" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/>
-            </svg>
-          </div>
-          <h3 class="text-[17px] font-semibold text-slate-900 mb-2.5 tracking-tight">Add any startup from a URL</h3>
-          <p class="text-[14px] text-slate-500 leading-relaxed mb-6">
-            Paste any website URL. The tool crawls the homepage, about, and team pages — extracts founders, funding, sector, and stage — then scores it and writes the memo. Ready in under 30 seconds.
-          </p>
-          <!-- URL → card flow -->
-          <div class="space-y-2.5">
-            <div class="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/>
-              </svg>
-              <span class="text-[12.5px] text-slate-400 font-mono">https://neuralbridge.ai</span>
-            </div>
-            <div class="text-[12px] text-slate-500 space-y-1.5 pl-1">
-              <div class="flex items-center gap-2">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0e847f" stroke-width="2.5" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+              <!-- Score ring -->
+              <div class="relative w-12 h-12 shrink-0 flex items-center justify-center">
+                <svg class="absolute inset-0 -rotate-90" width="48" height="48" viewBox="0 0 48 48">
+                  <circle cx="24" cy="24" r="19" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2.5"/>
+                  <circle cx="24" cy="24" r="19" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"
+                    stroke-dasharray="119.4" class="ring-draw" style="--full:119.4;--offset:32;" />
                 </svg>
-                Crawled homepage + /team + /about
+                <span class="relative text-[12px] font-bold text-green-400 numeral">73</span>
               </div>
-              <div class="flex items-center gap-2">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0e847f" stroke-width="2.5" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2 — middle -->
+        <div class="absolute top-[160px] right-0 w-[340px] bob-2">
+          <div class="bg-white rounded-2xl p-4 shadow-2xl">
+            <div class="flex items-start gap-3">
+              <div class="flex-1 space-y-1.5">
+                <span class="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                  <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> Quantum
+                </span>
+                <p class="text-[13px] font-semibold text-slate-900 tracking-tight">QubitSystems</p>
+                <p class="text-[11px] text-slate-400">🇩🇪 Germany · 2022 · Series A · HN</p>
+                <!-- Mini score bars -->
+                <div class="pt-1 space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[10px] text-slate-400 w-12">Team</span>
+                    <div class="flex-1 bg-slate-100 rounded-full h-[3px]"><div class="bg-teal h-[3px] rounded-full" style="width:88%"></div></div>
+                    <span class="text-[10px] text-slate-600 font-semibold numeral">88</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-[10px] text-slate-400 w-12">Tech</span>
+                    <div class="flex-1 bg-slate-100 rounded-full h-[3px]"><div class="bg-teal h-[3px] rounded-full" style="width:91%"></div></div>
+                    <span class="text-[10px] text-slate-600 font-semibold numeral">91</span>
+                  </div>
+                </div>
+              </div>
+              <div class="relative w-12 h-12 shrink-0 flex items-center justify-center">
+                <svg class="absolute inset-0 -rotate-90" width="48" height="48" viewBox="0 0 48 48">
+                  <circle cx="24" cy="24" r="19" fill="none" stroke="#f1f5f9" stroke-width="2.5"/>
+                  <circle cx="24" cy="24" r="19" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"
+                    stroke-dasharray="119.4" stroke-dashoffset="20"/>
                 </svg>
-                Extracted 3 founders · AI/ML · Seed · France
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="w-3 h-3 border border-teal border-t-transparent rounded-full animate-spin shrink-0" aria-label="Loading"></span>
-                Scoring and generating DD memo…
+                <span class="relative text-[12px] font-bold text-green-600 numeral">83</span>
               </div>
             </div>
           </div>
         </div>
 
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── HOW IT WORKS ─────────────────────────────────────────────────────── -->
-  <section class="bg-slate-50 border-y border-slate-100 py-24 px-6">
-    <div class="max-w-6xl mx-auto">
-
-      <div class="max-w-lg mb-16 reveal">
-        <p class="text-[11.5px] font-semibold uppercase tracking-widest text-teal mb-3">How it works</p>
-        <h2 class="text-[38px] font-bold text-slate-900 leading-tight">From signal to memo<br>in three steps.</h2>
-      </div>
-
-      <div class="grid md:grid-cols-3 gap-10">
-        <div class="reveal">
-          <p class="text-[52px] font-bold text-slate-100 numeral leading-none mb-5">01</p>
-          <h3 class="text-[16.5px] font-semibold text-slate-900 mb-2 tracking-tight">Add startups</h3>
-          <p class="text-[14px] text-slate-500 leading-relaxed">
-            Paste a URL, or pull startups automatically from HackerNews, GitHub, and EU tech news. Your pipeline populates itself.
-          </p>
-        </div>
-        <div class="reveal" style="transition-delay:.1s">
-          <p class="text-[52px] font-bold text-slate-100 numeral leading-none mb-5">02</p>
-          <h3 class="text-[16.5px] font-semibold text-slate-900 mb-2 tracking-tight">Score against your thesis</h3>
-          <p class="text-[14px] text-slate-500 leading-relaxed">
-            AI evaluates each startup across 5 dimensions. Define custom thesis notes in Settings — they get injected into every scoring prompt, adapting the model to your fund's criteria.
-          </p>
-        </div>
-        <div class="reveal" style="transition-delay:.2s">
-          <p class="text-[52px] font-bold text-slate-100 numeral leading-none mb-5">03</p>
-          <h3 class="text-[16.5px] font-semibold text-slate-900 mb-2 tracking-tight">Research and track</h3>
-          <p class="text-[14px] text-slate-500 leading-relaxed">
-            Read the full DD memo, chat with the AI about any aspect of the company, add notes, and move the deal through the pipeline. Everything persists across sessions.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── THESIS CUSTOMIZATION ─────────────────────────────────────────────── -->
-  <section class="py-24 px-6">
-    <div class="max-w-6xl mx-auto">
-      <div class="grid lg:grid-cols-2 gap-16 items-center">
-
-        <div class="reveal">
-          <p class="text-[11.5px] font-semibold uppercase tracking-widest text-teal mb-3">Configurable</p>
-          <h2 class="text-[38px] font-bold text-slate-900 mb-5 leading-tight">Tuned to your<br>investment thesis.</h2>
-          <p class="text-[15px] text-slate-500 leading-relaxed mb-8">
-            Every VC firm has different criteria. Write custom thesis notes in Settings — the AI incorporates them into every scoring prompt. Tell it your preferred sectors, geographies, check sizes. The model adjusts.
-          </p>
-          <ul class="space-y-3">
-            <li class="flex items-start gap-3 text-[14px] text-slate-600">
-              <svg class="w-4 h-4 text-teal mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-              </svg>
-              Custom thesis notes injected into every AI prompt
-            </li>
-            <li class="flex items-start gap-3 text-[14px] text-slate-600">
-              <svg class="w-4 h-4 text-teal mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-              </svg>
-              Feedback-aware rescoring — analyst notes influence the score
-            </li>
-            <li class="flex items-start gap-3 text-[14px] text-slate-600">
-              <svg class="w-4 h-4 text-teal mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-              </svg>
-              Multi-user — each analyst has isolated, secure data
-            </li>
-            <li class="flex items-start gap-3 text-[14px] text-slate-600">
-              <svg class="w-4 h-4 text-teal mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
-              </svg>
-              Export top opportunities as a PDF report
-            </li>
-          </ul>
-        </div>
-
-        <!-- Settings mockup -->
-        <div class="reveal" style="transition-delay:.1s">
-          <div class="bg-white border border-slate-200/80 rounded-2xl overflow-hidden" style="box-shadow: 0 6px 24px 0 rgb(0 0 0 / 0.07)">
-            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <span class="font-semibold text-slate-900 text-[14px]">Settings</span>
-              <span class="text-slate-400 text-[12px]">analyst@yourfund.vc</span>
-            </div>
-            <div class="px-5 py-5">
-              <p class="text-[10.5px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Custom Thesis Notes</p>
-              <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 text-[13px] text-slate-600 leading-relaxed">
-                We invest in deep tech companies with<br>
-                at least one PhD founder. We focus on<br>
-                AI infrastructure, quantum hardware,<br>
-                and defense-grade cybersecurity.<br>
-                <span class="text-teal font-medium">Ticket: €500k–€3M pre-Series A.</span>
+        <!-- Card 3 — AI memo snippet -->
+        <div class="absolute top-[340px] right-6 w-[300px] bob-3">
+          <div class="bg-ink/90 backdrop-blur-sm border border-white/10 rounded-2xl p-4 shadow-2xl">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-5 h-5 rounded-full bg-teal/20 border border-teal/30 flex items-center justify-center">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#14a89e" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09z"/></svg>
               </div>
-              <p class="mt-3 text-[11.5px] text-slate-400 leading-relaxed">
-                These notes are appended to every AI scoring prompt — the model adapts to your criteria.
-              </p>
+              <span class="text-[11px] text-white/50 font-medium">AI Research Assistant</span>
             </div>
+            <p class="text-[11.5px] text-white/70 leading-relaxed">
+              "Strong thesis fit. The CTO's photonic chip IP is a clear moat and the team's Unit 8200 background signals execution depth."
+            </p>
           </div>
         </div>
 
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- ─── FINAL CTA ────────────────────────────────────────────────────────── -->
-  <section class="bg-ink py-28 px-6 relative overflow-hidden">
-    <div class="absolute inset-0 hero-glow"></div>
-    <div class="absolute inset-0 grid-bg"></div>
-    <div class="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+  <div class="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+</section>
 
-    <div class="max-w-xl mx-auto text-center relative reveal">
-      <h2 class="text-[42px] font-bold text-white mb-5 leading-tight">
-        Ready to clear<br>your backlog?
-      </h2>
-      <p class="text-[16px] text-slate-400 mb-10 leading-relaxed">
-        Sign in with your work email. Your pipeline is ready.
-      </p>
-      <a
-        href="https://vc-analysis.vercel.app"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="inline-flex items-center gap-2.5 bg-teal hover:bg-teal-dark text-white font-semibold text-[15px] px-8 py-4 rounded-xl transition-all hover:shadow-xl hover:shadow-teal/25"
-      >
-        Try Deal Flow Intelligence
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"/>
-        </svg>
-      </a>
-      <p class="mt-5 text-[12.5px] text-slate-600">Magic link sign-in · No password needed · Free to use</p>
+<!-- ─── STATS ────────────────────────────────────────────────────────────────── -->
+<section class="bg-slate-50 border-b border-slate-100 py-12 px-6">
+  <div class="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+    <div class="reveal">
+      <p class="text-[38px] font-bold tracking-tight text-slate-900 numeral leading-none stat-num" data-target="5">0</p>
+      <p class="text-[13px] text-slate-500 mt-2">AI scoring dimensions</p>
     </div>
-  </section>
+    <div class="reveal" style="transition-delay:.07s">
+      <p class="text-[38px] font-bold tracking-tight text-slate-900 leading-none">&lt;30s</p>
+      <p class="text-[13px] text-slate-500 mt-2">to score a startup</p>
+    </div>
+    <div class="reveal" style="transition-delay:.14s">
+      <p class="text-[38px] font-bold tracking-tight text-slate-900 numeral leading-none stat-num" data-target="6">0</p>
+      <p class="text-[13px] text-slate-500 mt-2">DD memo sections</p>
+    </div>
+    <div class="reveal" style="transition-delay:.21s">
+      <p class="text-[38px] font-bold tracking-tight text-slate-900 leading-none">∞</p>
+      <p class="text-[13px] text-slate-500 mt-2">startups in your pipeline</p>
+    </div>
+  </div>
+</section>
 
-  <!-- ─── FOOTER ───────────────────────────────────────────────────────────── -->
-  <footer class="bg-ink border-t border-white/[0.06] py-7 px-6">
-    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4 flex-wrap">
-      <div class="flex items-center gap-2">
-        <svg width="16" height="16" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <polygon points="4,28 8,28 10,20 6,20" fill="white" opacity="0.4"/>
-          <polygon points="11,28 15,28 19,14 15,14" fill="white" opacity="0.65"/>
-          <polygon points="18,28 22,28 27,7 23,7" fill="white"/>
-          <circle cx="26" cy="4" r="2.5" fill="white"/>
-        </svg>
-        <span class="text-white/30 text-[12.5px]">Deal Flow Intelligence</span>
+<!-- ─── FEATURES ─────────────────────────────────────────────────────────────── -->
+<section id="features" class="py-28 px-6">
+  <div class="max-w-6xl mx-auto">
+
+    <div class="max-w-lg mb-16 reveal">
+      <p class="text-[11.5px] font-semibold uppercase tracking-widest text-teal mb-3">Features</p>
+      <h2 class="text-[40px] font-bold text-slate-900 mb-4 leading-tight">From first signal<br>to term sheet.</h2>
+      <p class="text-[15.5px] text-slate-500 leading-relaxed">Everything your team needs, in one place. No spreadsheets.</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-5">
+
+      <!-- AI Scoring -->
+      <div class="feat-card glow-card border border-slate-200/80 rounded-2xl p-7 bg-white reveal">
+        <div class="w-9 h-9 rounded-xl bg-teal/10 flex items-center justify-center mb-5">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0e847f" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <h3 class="text-[17.5px] font-semibold text-slate-900 mb-2.5 tracking-tight">Multi-dimensional AI scoring</h3>
+        <p class="text-[14px] text-slate-500 leading-relaxed mb-6">5 dimensions scored independently to prevent anchoring bias — then weighted into one fit score. Team, Technology, Market, Geography, Stage.</p>
+
+        <div class="space-y-3" id="score-bars">
+          <div class="flex items-center gap-3 text-[12px]">
+            <span class="text-slate-500 w-[88px] shrink-0">Team</span>
+            <div class="flex-1 bg-slate-100 rounded-full h-[5px] overflow-hidden"><div class="bar-fill bg-teal h-[5px] rounded-full" style="--w:82%"></div></div>
+            <span class="text-slate-700 font-semibold numeral w-5 text-right">82</span>
+          </div>
+          <div class="flex items-center gap-3 text-[12px]">
+            <span class="text-slate-500 w-[88px] shrink-0">Technology</span>
+            <div class="flex-1 bg-slate-100 rounded-full h-[5px] overflow-hidden"><div class="bar-fill bg-teal h-[5px] rounded-full" style="--w:76%"></div></div>
+            <span class="text-slate-700 font-semibold numeral w-5 text-right">76</span>
+          </div>
+          <div class="flex items-center gap-3 text-[12px]">
+            <span class="text-slate-500 w-[88px] shrink-0">Market</span>
+            <div class="flex-1 bg-slate-100 rounded-full h-[5px] overflow-hidden"><div class="bar-fill bg-amber-400 h-[5px] rounded-full" style="--w:61%"></div></div>
+            <span class="text-slate-700 font-semibold numeral w-5 text-right">61</span>
+          </div>
+          <div class="flex items-center gap-3 text-[12px]">
+            <span class="text-slate-500 w-[88px] shrink-0">Geography</span>
+            <div class="flex-1 bg-slate-100 rounded-full h-[5px] overflow-hidden"><div class="bar-fill bg-teal h-[5px] rounded-full" style="--w:90%"></div></div>
+            <span class="text-slate-700 font-semibold numeral w-5 text-right">90</span>
+          </div>
+          <div class="flex items-center gap-3 text-[12px]">
+            <span class="text-slate-500 w-[88px] shrink-0">Stage fit</span>
+            <div class="flex-1 bg-slate-100 rounded-full h-[5px] overflow-hidden"><div class="bar-fill bg-teal h-[5px] rounded-full" style="--w:85%"></div></div>
+            <span class="text-slate-700 font-semibold numeral w-5 text-right">85</span>
+          </div>
+          <div class="pt-3 border-t border-slate-50 flex items-center justify-between">
+            <span class="text-[12px] text-slate-400">Weighted fit score</span>
+            <span class="text-[16px] font-bold text-teal numeral">79 / 100</span>
+          </div>
+        </div>
       </div>
-      <div class="flex items-center gap-5">
-        <a href="https://vc-analysis.vercel.app" target="_blank" rel="noopener noreferrer" class="text-white/30 hover:text-white/60 text-[12.5px] transition-colors">Open app ↗</a>
-        <a href="https://www.linkedin.com/in/guido-sassaroli-778548169/" target="_blank" rel="noopener noreferrer" class="text-white/30 hover:text-white/60 text-[12.5px] transition-colors">Built by Guido Sassaroli</a>
+
+      <!-- DD Memos -->
+      <div class="feat-card glow-card border border-slate-200/80 rounded-2xl p-7 bg-white reveal" style="transition-delay:.08s">
+        <div class="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center mb-5">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+        </div>
+        <h3 class="text-[17.5px] font-semibold text-slate-900 mb-2.5 tracking-tight">Full DD memos in seconds</h3>
+        <p class="text-[14px] text-slate-500 leading-relaxed mb-6">6-section due diligence memos generated with analyst-level precision. Problem, Solution, Team, Traction, Thesis Fit, Red Flags. Regenerable any time.</p>
+        <div class="border border-slate-100 rounded-xl overflow-hidden">
+          <div class="bg-slate-900 px-4 py-3 flex items-center justify-between">
+            <span class="text-white font-semibold text-[13px] tracking-tight">NeuralBridge AI</span>
+            <span class="text-teal-light text-[11px] font-bold numeral">79 / 100</span>
+          </div>
+          <div>
+            <div class="px-4 py-3 border-b border-slate-50">
+              <p class="text-[10px] font-bold text-teal uppercase tracking-widest mb-1.5">Problem</p>
+              <div class="space-y-1"><div class="h-2 bg-slate-100 rounded-full w-full"></div><div class="h-2 bg-slate-100 rounded-full w-4/5"></div></div>
+            </div>
+            <div class="px-4 py-3 border-b border-slate-50">
+              <p class="text-[10px] font-bold text-teal uppercase tracking-widest mb-1.5">Team Assessment</p>
+              <div class="space-y-1"><div class="h-2 bg-slate-100 rounded-full w-full"></div><div class="h-2 bg-slate-100 rounded-full w-3/5"></div></div>
+            </div>
+            <div class="px-4 py-3">
+              <p class="text-[10px] font-bold text-teal uppercase tracking-widest mb-1.5">Thesis Fit</p>
+              <div class="space-y-1"><div class="h-2 bg-slate-100 rounded-full w-11/12"></div><div class="h-2 bg-slate-100 rounded-full w-2/3"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pipeline -->
+      <div class="feat-card glow-card border border-slate-200/80 rounded-2xl p-7 bg-white reveal" style="transition-delay:.16s">
+        <div class="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center mb-5">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+        </div>
+        <h3 class="text-[17.5px] font-semibold text-slate-900 mb-2.5 tracking-tight">Pipeline tracking built in</h3>
+        <p class="text-[14px] text-slate-500 leading-relaxed mb-6">Move every deal through your pipeline. Notes, status, and full chat history all persist across sessions. Pick up exactly where you left off.</p>
+        <div class="flex items-center gap-1.5 mb-4">
+          <div class="flex-1 text-center py-1.5 bg-slate-100 text-slate-500 text-[10px] font-semibold rounded-lg">Sourced</div>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+          <div class="flex-1 text-center py-1.5 bg-blue-50 text-blue-600 text-[10px] font-semibold rounded-lg">In Review</div>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+          <div class="flex-1 text-center py-1.5 bg-violet-50 text-violet-600 text-[10px] font-semibold rounded-lg">Meeting</div>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+          <div class="flex-1 text-center py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-semibold rounded-lg">Term Sheet</div>
+        </div>
+        <div class="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex items-start gap-2.5">
+          <div class="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center shrink-0 mt-0.5">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09z"/></svg>
+          </div>
+          <div>
+            <p class="text-[11.5px] text-slate-700 leading-relaxed">"Who are the main competitors and what is the exit potential?"</p>
+            <p class="text-[10.5px] text-slate-400 mt-1">Ask anything — answers grounded in all available data</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add from URL -->
+      <div class="feat-card glow-card border border-slate-200/80 rounded-2xl p-7 bg-white reveal" style="transition-delay:.24s">
+        <div class="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center mb-5">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+        </div>
+        <h3 class="text-[17.5px] font-semibold text-slate-900 mb-2.5 tracking-tight">Add any startup from a URL</h3>
+        <p class="text-[14px] text-slate-500 leading-relaxed mb-6">Paste a website. The tool crawls homepage, about, and team pages — extracts founders, funding, sector, stage — then scores and writes the memo. Under 30 seconds.</p>
+        <div class="space-y-2.5">
+          <div class="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+            <span class="text-[12.5px] text-slate-400 font-mono">https://neuralbridge.ai</span>
+          </div>
+          <div class="text-[12px] text-slate-500 space-y-1.5 pl-1">
+            <div class="flex items-center gap-2">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0e847f" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              Crawled homepage + /team + /about
+            </div>
+            <div class="flex items-center gap-2">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0e847f" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              Extracted 3 founders · AI/ML · Seed · France
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 border border-teal border-t-transparent rounded-full animate-spin shrink-0"></span>
+              Scoring and generating DD memo…
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─── VAULT SECTION ─────────────────────────────────────────────────────────── -->
+<section id="vault" class="bg-ink noise py-28 px-6 relative overflow-hidden">
+  <div class="orb w-[400px] h-[400px] bg-teal/15 top-[-80px] left-[-80px]" style="animation: floatB 12s ease-in-out infinite;"></div>
+  <div class="orb w-[300px] h-[300px] bg-violet-500/10 bottom-[-50px] right-[-50px]" style="animation: floatA 9s ease-in-out infinite; animation-delay:-4s;"></div>
+
+  <div class="max-w-6xl mx-auto relative">
+    <div class="grid lg:grid-cols-2 gap-16 items-center">
+
+      <!-- Copy -->
+      <div class="reveal from-left">
+        <p class="text-[11.5px] font-semibold uppercase tracking-widest text-teal mb-3">Your private research vault</p>
+        <h2 class="text-[40px] font-bold text-white mb-5 leading-tight">Every insight,<br>always yours.</h2>
+        <p class="text-[15.5px] text-slate-400 leading-relaxed mb-8">
+          Your deal flow is personal. Every startup you source, every note you write, every conversation with the AI — stored privately, linked to your account, never shared.
+        </p>
+        <p class="text-[15.5px] text-slate-400 leading-relaxed mb-10">
+          Sign in from any device and your full pipeline is waiting. Scores, memos, chat history, analyst notes — exactly where you left them.
+        </p>
+        <div class="space-y-3.5">
+          <div class="flex items-start gap-3 text-[14px] text-slate-300">
+            <div class="w-5 h-5 rounded-full bg-teal/20 border border-teal/30 flex items-center justify-center shrink-0 mt-0.5">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#14a89e" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+            </div>
+            Isolated database — no data leaks between analysts
+          </div>
+          <div class="flex items-start gap-3 text-[14px] text-slate-300">
+            <div class="w-5 h-5 rounded-full bg-teal/20 border border-teal/30 flex items-center justify-center shrink-0 mt-0.5">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#14a89e" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+            </div>
+            Magic link sign-in — no password to manage or forget
+          </div>
+          <div class="flex items-start gap-3 text-[14px] text-slate-300">
+            <div class="w-5 h-5 rounded-full bg-teal/20 border border-teal/30 flex items-center justify-center shrink-0 mt-0.5">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#14a89e" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+            </div>
+            Persistent chat history survives page refreshes and sessions
+          </div>
+          <div class="flex items-start gap-3 text-[14px] text-slate-300">
+            <div class="w-5 h-5 rounded-full bg-teal/20 border border-teal/30 flex items-center justify-center shrink-0 mt-0.5">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#14a89e" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+            </div>
+            Hosted on Supabase with JWT-authenticated API access
+          </div>
+        </div>
+      </div>
+
+      <!-- Vault visual -->
+      <div class="reveal from-right" style="transition-delay:.1s">
+        <div class="bg-white/[0.04] border border-white/10 rounded-2xl p-5 space-y-3 backdrop-blur-sm">
+
+          <!-- User header -->
+          <div class="flex items-center gap-3 pb-4 border-b border-white/8">
+            <div class="w-9 h-9 rounded-full bg-teal/20 border border-teal/30 flex items-center justify-center text-teal-light font-bold text-[13px]">A</div>
+            <div>
+              <p class="text-white text-[13px] font-medium">analyst@yourfund.vc</p>
+              <p class="text-white/40 text-[11px]">Private pipeline · 24 startups</p>
+            </div>
+            <div class="ml-auto flex items-center gap-1.5 text-teal-light text-[10.5px] font-semibold">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path stroke-linecap="round" d="M7 11V7a5 5 0 0110 0v4"/></svg>
+              Secure
+            </div>
+          </div>
+
+          <!-- Activity feed -->
+          <div class="space-y-2.5" id="vault-feed">
+            <div class="vault-item flex items-start gap-2.5 opacity-0" style="transition: opacity 0.4s, transform 0.4s; transform: translateX(-8px)">
+              <div class="w-1.5 h-1.5 rounded-full bg-teal-light mt-1.5 shrink-0"></div>
+              <div>
+                <p class="text-[12px] text-white/70">Scored <span class="text-white font-medium">NeuralBridge AI</span></p>
+                <p class="text-[10.5px] text-white/30 numeral">Fit score: 73 · 2 minutes ago</p>
+              </div>
+            </div>
+            <div class="vault-item flex items-start gap-2.5 opacity-0" style="transition: opacity 0.4s 0.15s, transform 0.4s 0.15s; transform: translateX(-8px)">
+              <div class="w-1.5 h-1.5 rounded-full bg-violet-400 mt-1.5 shrink-0"></div>
+              <div>
+                <p class="text-[12px] text-white/70">Added note to <span class="text-white font-medium">QubitSystems</span></p>
+                <p class="text-[10.5px] text-white/30">→ Rescored · Team 65 → 82 · 1 hour ago</p>
+              </div>
+            </div>
+            <div class="vault-item flex items-start gap-2.5 opacity-0" style="transition: opacity 0.4s 0.3s, transform 0.4s 0.3s; transform: translateX(-8px)">
+              <div class="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 shrink-0"></div>
+              <div>
+                <p class="text-[12px] text-white/70">Moved <span class="text-white font-medium">Cellara Bio</span> to Meeting Booked</p>
+                <p class="text-[10.5px] text-white/30">Pipeline update · Yesterday</p>
+              </div>
+            </div>
+            <div class="vault-item flex items-start gap-2.5 opacity-0" style="transition: opacity 0.4s 0.45s, transform 0.4s 0.45s; transform: translateX(-8px)">
+              <div class="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0"></div>
+              <div>
+                <p class="text-[12px] text-white/70">Generated DD memo for <span class="text-white font-medium">IronSec</span></p>
+                <p class="text-[10.5px] text-white/30">6 sections · 2 days ago</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Session indicator -->
+          <div class="pt-3 border-t border-white/8 flex items-center justify-between">
+            <span class="text-[11px] text-white/30">Last session restored automatically</span>
+            <span class="flex items-center gap-1.5 text-[11px] text-teal-light font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-teal-light animate-pulse"></span> Synced
+            </span>
+          </div>
+        </div>
       </div>
     </div>
-  </footer>
+  </div>
+</section>
 
-  <script>
-    // Scroll reveal
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target) }
-      })
-    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' })
-    document.querySelectorAll('.reveal').forEach(el => io.observe(el))
+<!-- ─── AI LEARNS FROM YOU ─────────────────────────────────────────────────────── -->
+<section class="py-28 px-6">
+  <div class="max-w-6xl mx-auto">
+    <div class="grid lg:grid-cols-2 gap-16 items-start">
 
-    // Smooth scroll for anchor links
-    document.querySelectorAll('a[href^="#"]').forEach(a => {
-      a.addEventListener('click', e => {
-        e.preventDefault()
-        document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' })
-      })
+      <!-- Visual: note → score update -->
+      <div class="reveal from-left order-2 lg:order-1">
+        <div class="space-y-3">
+
+          <!-- Notes panel -->
+          <div class="border border-slate-200/80 rounded-2xl overflow-hidden bg-white" style="box-shadow: 0 1px 3px rgb(0 0 0 / 0.05)">
+            <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/></svg>
+              <span class="text-[12px] text-slate-500 font-medium">Analyst notes — QubitSystems</span>
+            </div>
+            <div class="p-4">
+              <p class="text-[13px] text-slate-700 leading-relaxed" id="typing-text"></p>
+              <span class="cursor text-teal text-[13px]" id="typing-cursor">|</span>
+            </div>
+          </div>
+
+          <!-- Arrow -->
+          <div class="flex items-center justify-center gap-2 py-1">
+            <div class="h-px flex-1 bg-gradient-to-r from-transparent to-teal/30"></div>
+            <div class="flex items-center gap-1.5 text-[11.5px] text-slate-400 font-medium px-3">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0e847f" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              AI rescored with context
+            </div>
+            <div class="h-px flex-1 bg-gradient-to-l from-transparent to-teal/30"></div>
+          </div>
+
+          <!-- Before / After scores -->
+          <div class="border border-slate-200/80 rounded-2xl p-5 bg-white" style="box-shadow: 0 1px 3px rgb(0 0 0 / 0.05)">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-slate-400 mb-4">Score update · Team dimension</p>
+            <div class="flex items-end gap-6">
+              <div class="text-center">
+                <p class="text-[11px] text-slate-400 mb-2">Before</p>
+                <div class="relative w-16 h-16 flex items-center justify-center">
+                  <svg class="absolute inset-0 -rotate-90" width="64" height="64" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="25" fill="none" stroke="#f1f5f9" stroke-width="3"/>
+                    <circle cx="32" cy="32" r="25" fill="none" stroke="#d97706" stroke-width="3" stroke-linecap="round"
+                      stroke-dasharray="157" stroke-dashoffset="92"/>
+                  </svg>
+                  <span class="relative text-[15px] font-bold text-amber-600 numeral">41</span>
+                </div>
+              </div>
+
+              <div class="flex-1 flex items-center justify-center pb-4">
+                <svg width="32" height="16" viewBox="0 0 32 16" fill="none">
+                  <path d="M0 8h28M22 2l8 6-8 6" stroke="#0e847f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+
+              <div class="text-center">
+                <p class="text-[11px] text-slate-400 mb-2">After</p>
+                <div class="relative w-16 h-16 flex items-center justify-center">
+                  <svg class="absolute inset-0 -rotate-90" width="64" height="64" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="25" fill="none" stroke="#f1f5f9" stroke-width="3"/>
+                    <circle id="after-ring" cx="32" cy="32" r="25" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round"
+                      stroke-dasharray="157" class="ring-draw" style="--full:157;--offset:31"/>
+                  </svg>
+                  <span id="after-score" class="relative text-[15px] font-bold numeral text-green-600">80</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-[12px] text-slate-500 text-center mt-3 italic">
+              "CTO's Unit 8200 background and quantum optics PhD significantly strengthen the team score."
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Copy -->
+      <div class="reveal from-right order-1 lg:order-2" style="transition-delay:.05s">
+        <p class="text-[11.5px] font-semibold uppercase tracking-widest text-teal mb-3">AI that learns from you</p>
+        <h2 class="text-[40px] font-bold text-slate-900 mb-5 leading-tight">The more you write,<br>the smarter it gets.</h2>
+        <p class="text-[15.5px] text-slate-500 leading-relaxed mb-6">
+          Add analyst notes to any startup. When you re-score, those notes are injected directly into the AI prompt — alongside your last 6 chat messages.
+        </p>
+        <p class="text-[15.5px] text-slate-500 leading-relaxed mb-8">
+          Write <em>"The CTO has a photonics PhD and previously led hardware at a Unit 8200 spinout"</em> — the Team score adjusts to reflect your context. The AI reads what you know.
+        </p>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+          <p class="text-[11px] font-semibold uppercase tracking-widest text-slate-400">What gets injected into every rescore</p>
+          <div class="flex items-center gap-2 text-[13px] text-slate-600">
+            <span class="w-1.5 h-1.5 rounded-full bg-teal shrink-0"></span>
+            Your analyst notes for that startup
+          </div>
+          <div class="flex items-center gap-2 text-[13px] text-slate-600">
+            <span class="w-1.5 h-1.5 rounded-full bg-teal shrink-0"></span>
+            Last 6 messages from your AI chat
+          </div>
+          <div class="flex items-center gap-2 text-[13px] text-slate-600">
+            <span class="w-1.5 h-1.5 rounded-full bg-teal shrink-0"></span>
+            Your custom thesis notes from Settings
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─── HOW IT WORKS ─────────────────────────────────────────────────────────── -->
+<section class="bg-slate-50 border-y border-slate-100 py-24 px-6">
+  <div class="max-w-6xl mx-auto">
+    <div class="max-w-lg mb-16 reveal">
+      <p class="text-[11.5px] font-semibold uppercase tracking-widest text-teal mb-3">How it works</p>
+      <h2 class="text-[40px] font-bold text-slate-900 leading-tight">Signal to memo<br>in three steps.</h2>
+    </div>
+    <div class="grid md:grid-cols-3 gap-10">
+      <div class="reveal">
+        <p class="text-[56px] font-bold text-slate-100 numeral leading-none mb-5">01</p>
+        <h3 class="text-[17px] font-semibold text-slate-900 mb-2.5 tracking-tight">Add startups</h3>
+        <p class="text-[14px] text-slate-500 leading-relaxed">Paste a URL, or pull from HackerNews, GitHub, and EU tech news. Your pipeline populates itself.</p>
+      </div>
+      <div class="reveal" style="transition-delay:.1s">
+        <p class="text-[56px] font-bold text-slate-100 numeral leading-none mb-5">02</p>
+        <h3 class="text-[17px] font-semibold text-slate-900 mb-2.5 tracking-tight">Score your way</h3>
+        <p class="text-[14px] text-slate-500 leading-relaxed">AI scores each startup across 5 dimensions. Write custom thesis notes — they get injected into every prompt. The model adapts to your criteria.</p>
+      </div>
+      <div class="reveal" style="transition-delay:.2s">
+        <p class="text-[56px] font-bold text-slate-100 numeral leading-none mb-5">03</p>
+        <h3 class="text-[17px] font-semibold text-slate-900 mb-2.5 tracking-tight">Research and track</h3>
+        <p class="text-[14px] text-slate-500 leading-relaxed">Read the DD memo, chat with AI, write notes, move the deal through the pipeline. Everything is saved to your private vault.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FINAL CTA ─────────────────────────────────────────────────────────────── -->
+<section class="bg-ink noise py-32 px-6 relative overflow-hidden">
+  <div class="orb w-[500px] h-[500px] bg-teal/15 top-[-150px] right-[-100px]" style="animation: floatA 11s ease-in-out infinite;"></div>
+  <div class="orb w-[300px] h-[300px] bg-violet-500/10 bottom-[-80px] left-[-80px]" style="animation: floatB 9s ease-in-out infinite; animation-delay:-3s;"></div>
+  <div class="absolute inset-0 opacity-[0.03]" style="background-image: linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px); background-size: 48px 48px;"></div>
+
+  <div class="max-w-2xl mx-auto text-center relative reveal">
+    <h2 class="text-[48px] font-bold text-white mb-5 leading-tight">
+      Ready to clear<br>your backlog?
+    </h2>
+    <p class="text-[16px] text-slate-400 mb-10 leading-relaxed max-w-lg mx-auto">
+      Sign in with your work email. Your private pipeline is waiting — and the AI is ready to learn your thesis.
+    </p>
+    <a
+      href="https://vc-analysis.vercel.app"
+      target="_blank" rel="noopener noreferrer"
+      class="inline-flex items-center gap-2.5 bg-teal hover:bg-teal-dark text-white font-semibold text-[16px] px-9 py-4 rounded-xl transition-all duration-200 hover:shadow-[0_0_50px_rgba(14,132,127,0.35)] hover:scale-[1.02]"
+    >
+      Try Deal Flow Intelligence
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"/></svg>
+    </a>
+    <p class="mt-5 text-[12.5px] text-slate-600">Magic link sign-in · No password · Free to use</p>
+  </div>
+</section>
+
+<!-- ─── FOOTER ─────────────────────────────────────────────────────────────────── -->
+<footer class="bg-ink border-t border-white/[0.06] py-7 px-6">
+  <div class="max-w-6xl mx-auto flex items-center justify-between gap-4 flex-wrap">
+    <div class="flex items-center gap-2">
+      <svg width="16" height="16" viewBox="0 0 32 32" fill="none"><polygon points="4,28 8,28 10,20 6,20" fill="white" opacity="0.4"/><polygon points="11,28 15,28 19,14 15,14" fill="white" opacity="0.65"/><polygon points="18,28 22,28 27,7 23,7" fill="white"/><circle cx="26" cy="4" r="2.5" fill="white"/></svg>
+      <span class="text-white/30 text-[12.5px]">Deal Flow Intelligence</span>
+    </div>
+    <div class="flex items-center gap-5">
+      <a href="https://vc-analysis.vercel.app" target="_blank" rel="noopener noreferrer" class="text-white/30 hover:text-white/60 text-[12.5px] transition-colors">Open app ↗</a>
+      <a href="https://www.linkedin.com/in/guido-sassaroli-778548169/" target="_blank" rel="noopener noreferrer" class="text-white/30 hover:text-white/60 text-[12.5px] transition-colors">Built by Guido Sassaroli</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ── Scroll reveal ──────────────────────────────────────────────────────────
+  const revealIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); revealIO.unobserve(e.target) }
     })
-  </script>
+  }, { threshold: 0.07, rootMargin: '0px 0px -40px 0px' })
+  document.querySelectorAll('.reveal').forEach(el => revealIO.observe(el))
+
+  // ── Trigger hero rings on load ─────────────────────────────────────────────
+  setTimeout(() => {
+    document.querySelectorAll('.ring-draw').forEach(el => el.classList.add('animate'))
+  }, 400)
+
+  // ── Score bars animation (triggers when card visible) ─────────────────────
+  const barIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.querySelectorAll('.bar-fill').forEach(bar => bar.classList.add('animate'))
+        barIO.unobserve(e.target)
+      }
+    })
+  }, { threshold: 0.3 })
+  const scoreBarSection = document.getElementById('score-bars')
+  if (scoreBarSection) barIO.observe(scoreBarSection.closest('.feat-card'))
+
+  // ── Score ring animation on scroll ────────────────────────────────────────
+  const ringIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.querySelectorAll('.ring-draw').forEach(el => el.classList.add('animate'))
+        ringIO.unobserve(e.target)
+      }
+    })
+  }, { threshold: 0.3 })
+  document.querySelectorAll('.feat-card, .reveal').forEach(el => ringIO.observe(el))
+
+  // ── Counter animations ─────────────────────────────────────────────────────
+  function animateCount(el, target) {
+    let start = null
+    const duration = 1200
+    const step = (ts) => {
+      if (!start) start = ts
+      const p = Math.min((ts - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - p, 3)
+      el.textContent = Math.round(eased * target)
+      if (p < 1) requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  }
+  const counterIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const target = parseInt(e.target.dataset.target)
+        animateCount(e.target, target)
+        counterIO.unobserve(e.target)
+      }
+    })
+  }, { threshold: 0.5 })
+  document.querySelectorAll('.stat-num[data-target]').forEach(el => counterIO.observe(el))
+
+  // ── Vault feed animation ───────────────────────────────────────────────────
+  const vaultIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const items = e.target.querySelectorAll('.vault-item')
+        items.forEach((item, i) => {
+          setTimeout(() => {
+            item.style.opacity = '1'
+            item.style.transform = 'translateX(0)'
+          }, i * 180)
+        })
+        vaultIO.unobserve(e.target)
+      }
+    })
+  }, { threshold: 0.2 })
+  const vaultFeed = document.getElementById('vault-feed')
+  if (vaultFeed) vaultIO.observe(vaultFeed)
+
+  // ── Typing animation ───────────────────────────────────────────────────────
+  const NOTE_TEXT = 'CTO has a photonics PhD from ETH Zurich and previously led hardware R&D at a Unit 8200 spinout. Strong execution profile — recommend bumping team score.'
+  let typingStarted = false
+  const typingIO = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting && !typingStarted) {
+        typingStarted = true
+        const textEl = document.getElementById('typing-text')
+        const cursorEl = document.getElementById('typing-cursor')
+        if (!textEl) return
+        let i = 0
+        const type = () => {
+          if (i < NOTE_TEXT.length) {
+            textEl.textContent += NOTE_TEXT[i++]
+            setTimeout(type, i < 30 ? 35 : 22)
+          } else {
+            // hide cursor after typing
+            setTimeout(() => { if (cursorEl) cursorEl.style.display = 'none' }, 800)
+            // trigger after-ring animation
+            setTimeout(() => {
+              const afterRing = document.getElementById('after-ring')
+              if (afterRing) afterRing.classList.add('animate')
+            }, 400)
+          }
+        }
+        setTimeout(type, 600)
+        typingIO.unobserve(e.target)
+      }
+    })
+  }, { threshold: 0.3 })
+  const typingEl = document.getElementById('typing-text')
+  if (typingEl) typingIO.observe(typingEl.closest('.border'))
+
+  // ── Smooth scroll for anchor links ────────────────────────────────────────
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault()
+      document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' })
+    })
+  })
+</script>
 
 </body>
 </html>
