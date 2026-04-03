@@ -21,8 +21,9 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from auth import get_current_user
 from database import create_db_and_tables, get_session
-from models import RefreshStatus, Startup, StartupRead
+from models import RefreshStatus, Startup, StartupRead, UserConfigRead, UserConfigRecord
 from seed_data import SEED_STARTUPS
 from sources.hn import fetch_hn_startups
 from sources.github import fetch_github_startups
@@ -54,6 +55,7 @@ def _run_migrations():
     import sqlalchemy
     from database import engine
     new_columns = [
+        ("startup", "user_id", "VARCHAR"),
         ("startup", "funding", "VARCHAR"),
         ("startup", "linkedin_url", "VARCHAR"),
         ("startup", "status", "VARCHAR DEFAULT 'Sourced'"),
@@ -65,12 +67,17 @@ def _run_migrations():
         ("startup", "user_notes", "TEXT"),
         ("startup", "chat_history", "TEXT"),
     ]
-    # Use AUTOCOMMIT so each DDL statement is its own transaction — avoids
-    # PostgreSQL leaving the connection in an aborted state on duplicate columns.
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        # Drop FK constraint if present — user_id auth is enforced via JWT, not DB FK
+        try:
+            conn.execute(sqlalchemy.text(
+                "ALTER TABLE startup DROP CONSTRAINT IF EXISTS startup_user_id_fkey"
+            ))
+        except Exception:
+            pass
+
         for table, col, col_type in new_columns:
             try:
-                # IF NOT EXISTS: no-op if column already present (PostgreSQL 9.6+)
                 conn.execute(sqlalchemy.text(
                     f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type}"
                 ))
@@ -82,7 +89,6 @@ def _run_migrations():
 def on_startup():
     create_db_and_tables()
     _run_migrations()
-    _seed_if_empty()
 
 
 _STARTUP_FIELDS = set(Startup.model_fields.keys()) if hasattr(Startup, "model_fields") else set(Startup.__fields__.keys())
@@ -165,7 +171,6 @@ def _html_to_text(html: str) -> str:
 
 
 async def _fetch_subpage_text(client: httpx.AsyncClient, base_url: str, path: str) -> str:
-    """Try fetching a subpage; return its text or empty string on any error."""
     from urllib.parse import urlparse, urlunparse
     parsed = urlparse(base_url)
     subpage_url = urlunparse((parsed.scheme, parsed.netloc, path, '', '', ''))
@@ -211,7 +216,6 @@ def _extract_startup_info(url: str, text: str) -> dict:
 
 
 def _make_startup(data: dict) -> Startup:
-    """Create a Startup instance, ignoring any extra fields not in the model."""
     return Startup(**{k: v for k, v in data.items() if k in _STARTUP_FIELDS})
 
 
@@ -239,30 +243,26 @@ def _save_user_startup(data: dict):
         with open(USER_STARTUPS_PATH, "w") as f:
             json.dump(startups, f, indent=2, ensure_ascii=False)
     except OSError:
-        pass  # Read-only filesystem in serverless environments — Supabase is the source of truth
+        pass
 
 
-def _seed_if_empty():
-    """Populate DB with seed startups on first run."""
-    with Session(__import__("database").engine) as session:
-        existing = session.exec(select(Startup).where(Startup.source == "seed")).first()
-        if not existing:
-            print("[Seed] Inserting seed startups...")
-            for data in SEED_STARTUPS:
-                session.add(_make_startup(data))
-            session.commit()
-            print(f"[Seed] Inserted {len(SEED_STARTUPS)} mock startups.")
-
-        # Re-add any user-added startups that are missing (e.g. after a DB wipe)
-        for data in _load_user_startups():
-            website = data.get("website")
-            if website and session.exec(select(Startup).where(Startup.website == website)).first():
-                continue
-            session.add(_make_startup(data))
+def _seed_for_user(user_id: str, session: Session):
+    """Populate DB with seed startups for a new user (runs once per user)."""
+    existing = session.exec(
+        select(Startup)
+        .where(Startup.user_id == user_id)
+        .where(Startup.source == "seed")
+    ).first()
+    if not existing:
+        print(f"[Seed] Seeding for user {user_id[:8]}…")
+        for data in SEED_STARTUPS:
+            startup = _make_startup(data)
+            startup.user_id = user_id
+            session.add(startup)
         session.commit()
 
 
-# ─── Routes ──────────────────────────────────────────────────────────────────
+# ─── Routes ───────────────────────────────────────────────────────────────────
 
 @app.get("/api/startups", response_model=list[StartupRead])
 def list_startups(
@@ -270,10 +270,13 @@ def list_startups(
     stage: Optional[str] = Query(None),
     country: Optional[str] = Query(None),
     min_score: Optional[float] = Query(None, ge=0, le=100),
-    source: Optional[str] = Query(None),  # "hn" | "seed" | None = all
+    source: Optional[str] = Query(None),
+    user_id: str = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    query = select(Startup)
+    _seed_for_user(user_id, session)
+
+    query = select(Startup).where(Startup.user_id == user_id)
 
     if sector and sector != "All":
         query = query.where(Startup.sector == sector)
@@ -286,13 +289,15 @@ def list_startups(
     if source and source != "all":
         query = query.where(Startup.source == source)
 
-    startups = session.exec(query.order_by(Startup.fit_score.desc().nullslast())).all()
-    return startups
+    return session.exec(query.order_by(Startup.fit_score.desc().nullslast())).all()
 
 
 @app.post("/api/startups/from-url", response_model=StartupRead)
-async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_session)):
-    """Fetch a startup's website (+ team/about subpages), extract info with Claude, score and return it."""
+async def startup_from_url(
+    req: FetchUrlRequest,
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     url = req.url
 
     async with httpx.AsyncClient(
@@ -300,7 +305,6 @@ async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_
         follow_redirects=True,
         headers=_HTTP_HEADERS,
     ) as client:
-        # Fetch homepage
         try:
             resp = await client.get(url)
             resp.raise_for_status()
@@ -314,14 +318,12 @@ async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_
                 detail="Not enough readable text on this page. It may require JavaScript to render (e.g. Framer, React SPA). Try pasting the startup's details manually."
             )
 
-        # Concurrently fetch team/about subpages to find founders
         subpage_tasks = [_fetch_subpage_text(client, url, path) for path in _TEAM_SUBPATHS]
         subpage_texts = await asyncio.gather(*subpage_tasks)
 
-    # Combine: homepage first, then unique subpage content (skip duplicates of homepage)
     combined_parts = [homepage_text]
     for sub_text in subpage_texts:
-        if sub_text and sub_text[:200] != homepage_text[:200]:  # skip identical pages
+        if sub_text and sub_text[:200] != homepage_text[:200]:
             combined_parts.append(sub_text)
     combined_text = ' '.join(combined_parts)
 
@@ -334,7 +336,9 @@ async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_
         raise HTTPException(status_code=422, detail=f"Info extraction failed: {e}")
 
     website = info.get("website") or url
-    existing = session.exec(select(Startup).where(Startup.website == website)).first()
+    existing = session.exec(
+        select(Startup).where(Startup.website == website).where(Startup.user_id == user_id)
+    ).first()
     if existing:
         return existing
 
@@ -353,12 +357,12 @@ async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_
         "hn_url": url,
     }
     startup = _make_startup(startup_data)
+    startup.user_id = user_id
     session.add(startup)
     session.commit()
     _save_user_startup(startup_data)
     session.refresh(startup)
 
-    # Auto-score inline so the card appears with a score immediately
     try:
         result = await loop.run_in_executor(None, score_startup, startup.__dict__.copy())
         startup.fit_score = result.get("fit_score")
@@ -372,14 +376,10 @@ async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_
         startup.subscore_stage = result.get("subscore_stage")
 
         startup_dict_for_memo = {
-            "name": startup.name,
-            "description": startup.description,
-            "sector": startup.sector,
-            "stage": startup.stage,
-            "country": startup.country,
-            "founders": startup.founders,
-            "fit_score": startup.fit_score,
-            "score_rationale": startup.score_rationale,
+            "name": startup.name, "description": startup.description,
+            "sector": startup.sector, "stage": startup.stage,
+            "country": startup.country, "founders": startup.founders,
+            "fit_score": startup.fit_score, "score_rationale": startup.score_rationale,
             "red_flag": startup.red_flag,
         }
         memo = await loop.run_in_executor(None, generate_memo, startup_dict_for_memo)
@@ -390,34 +390,44 @@ async def startup_from_url(req: FetchUrlRequest, session: Session = Depends(get_
         session.commit()
         session.refresh(startup)
     except Exception:
-        pass  # scoring failure must not block the startup from being added
+        pass
 
     return startup
 
 
 @app.get("/api/startups/{startup_id}", response_model=StartupRead)
-def get_startup(startup_id: int, session: Session = Depends(get_session)):
+def get_startup(
+    startup_id: int,
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     startup = session.get(Startup, startup_id)
-    if not startup:
+    if not startup or startup.user_id != user_id:
         raise HTTPException(status_code=404, detail="Startup not found")
     return startup
 
 
 @app.delete("/api/startups/{startup_id}", status_code=204)
-def delete_startup(startup_id: int, session: Session = Depends(get_session)):
-    """Remove a single startup from the pipeline."""
+def delete_startup(
+    startup_id: int,
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     startup = session.get(Startup, startup_id)
-    if not startup:
+    if not startup or startup.user_id != user_id:
         raise HTTPException(status_code=404, detail="Startup not found")
     session.delete(startup)
     session.commit()
 
 
 @app.post("/api/startups/{startup_id}/score", response_model=StartupRead)
-def score_one(startup_id: int, session: Session = Depends(get_session)):
-    """Score (or re-score) a single startup with Claude."""
+def score_one(
+    startup_id: int,
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     startup = session.get(Startup, startup_id)
-    if not startup:
+    if not startup or startup.user_id != user_id:
         raise HTTPException(status_code=404, detail="Startup not found")
 
     result = score_startup(startup.__dict__)
@@ -431,16 +441,11 @@ def score_one(startup_id: int, session: Session = Depends(get_session)):
     startup.subscore_geography = result.get("subscore_geography")
     startup.subscore_stage = result.get("subscore_stage")
 
-    # Also generate memo
     startup_dict = {
-        "name": startup.name,
-        "description": startup.description,
-        "sector": startup.sector,
-        "stage": startup.stage,
-        "country": startup.country,
-        "founders": startup.founders,
-        "fit_score": result.get("fit_score"),
-        "score_rationale": result.get("rationale"),
+        "name": startup.name, "description": startup.description,
+        "sector": startup.sector, "stage": startup.stage,
+        "country": startup.country, "founders": startup.founders,
+        "fit_score": result.get("fit_score"), "score_rationale": result.get("rationale"),
         "red_flag": result.get("red_flag"),
     }
     memo = generate_memo(startup_dict)
@@ -454,21 +459,20 @@ def score_one(startup_id: int, session: Session = Depends(get_session)):
 
 
 @app.post("/api/startups/{startup_id}/memo", response_model=StartupRead)
-def generate_memo_for(startup_id: int, session: Session = Depends(get_session)):
-    """Generate or regenerate the DD memo for a startup."""
+def generate_memo_for(
+    startup_id: int,
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     startup = session.get(Startup, startup_id)
-    if not startup:
+    if not startup or startup.user_id != user_id:
         raise HTTPException(status_code=404, detail="Startup not found")
 
     startup_dict = {
-        "name": startup.name,
-        "description": startup.description,
-        "sector": startup.sector,
-        "stage": startup.stage,
-        "country": startup.country,
-        "founders": startup.founders,
-        "fit_score": startup.fit_score,
-        "score_rationale": startup.score_rationale,
+        "name": startup.name, "description": startup.description,
+        "sector": startup.sector, "stage": startup.stage,
+        "country": startup.country, "founders": startup.founders,
+        "fit_score": startup.fit_score, "score_rationale": startup.score_rationale,
         "red_flag": startup.red_flag,
     }
     memo = generate_memo(startup_dict)
@@ -482,12 +486,16 @@ def generate_memo_for(startup_id: int, session: Session = Depends(get_session)):
 
 
 @app.patch("/api/startups/{startup_id}/status", response_model=StartupRead)
-def update_status(startup_id: int, req: StatusUpdateRequest, session: Session = Depends(get_session)):
-    """Update the pipeline status of a startup."""
+def update_status(
+    startup_id: int,
+    req: StatusUpdateRequest,
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     if req.status not in _VALID_STATUSES:
         raise HTTPException(status_code=422, detail=f"status must be one of {sorted(_VALID_STATUSES)}")
     startup = session.get(Startup, startup_id)
-    if not startup:
+    if not startup or startup.user_id != user_id:
         raise HTTPException(status_code=404, detail="Startup not found")
     startup.status = req.status
     session.add(startup)
@@ -497,10 +505,14 @@ def update_status(startup_id: int, req: StatusUpdateRequest, session: Session = 
 
 
 @app.patch("/api/startups/{startup_id}/notes", response_model=StartupRead)
-def update_notes(startup_id: int, req: NotesUpdateRequest, session: Session = Depends(get_session)):
-    """Save analyst notes for a startup."""
+def update_notes(
+    startup_id: int,
+    req: NotesUpdateRequest,
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     startup = session.get(Startup, startup_id)
-    if not startup:
+    if not startup or startup.user_id != user_id:
         raise HTTPException(status_code=404, detail="Startup not found")
     startup.user_notes = req.user_notes
     session.add(startup)
@@ -510,10 +522,14 @@ def update_notes(startup_id: int, req: NotesUpdateRequest, session: Session = De
 
 
 @app.patch("/api/startups/{startup_id}/chat-history")
-def save_chat_history(startup_id: int, req: ChatHistoryRequest, session: Session = Depends(get_session)):
-    """Persist the chat conversation for a startup."""
+def save_chat_history(
+    startup_id: int,
+    req: ChatHistoryRequest,
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     startup = session.get(Startup, startup_id)
-    if not startup:
+    if not startup or startup.user_id != user_id:
         raise HTTPException(status_code=404, detail="Startup not found")
     startup.chat_history = json.dumps(req.history, ensure_ascii=False)
     session.add(startup)
@@ -522,10 +538,14 @@ def save_chat_history(startup_id: int, req: ChatHistoryRequest, session: Session
 
 
 @app.post("/api/startups/{startup_id}/chat")
-def chat_with_startup(startup_id: int, req: ChatRequest, session: Session = Depends(get_session)):
-    """Answer a free-form question about a startup using Claude."""
+def chat_with_startup(
+    startup_id: int,
+    req: ChatRequest,
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     startup = session.get(Startup, startup_id)
-    if not startup:
+    if not startup or startup.user_id != user_id:
         raise HTTPException(status_code=404, detail="Startup not found")
 
     import anthropic as _anthropic
@@ -555,35 +575,30 @@ Risks: {startup.memo_red_flags or 'N/A'}"""
     messages.append({"role": "user", "content": req.message})
 
     response = client.messages.create(
-        model=model,
-        max_tokens=200,
-        system=system,
-        messages=messages,
+        model=model, max_tokens=200, system=system, messages=messages,
     )
     return {"reply": response.content[0].text.strip()}
 
 
 @app.post("/api/refresh", response_model=RefreshStatus)
-async def refresh_feed(session: Session = Depends(get_session)):
-    """
-    Fetch from HackerNews, GitHub, and EU startup RSS feeds concurrently.
-    Deduplicates across all sources by hn_url. Scores new entries with Claude.
-    """
-    # Build set of all known source URLs to skip
+async def refresh_feed(
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     existing_urls = set(
         s.hn_url
-        for s in session.exec(select(Startup).where(Startup.hn_url != None)).all()
+        for s in session.exec(
+            select(Startup).where(Startup.user_id == user_id).where(Startup.hn_url != None)
+        ).all()
         if s.hn_url
     )
 
-    # Fetch all three sources concurrently
     hn_posts, github_repos, rss_startups = await asyncio.gather(
         fetch_hn_startups(max_results=20, existing_urls=existing_urls),
         fetch_github_startups(max_per_query=5, existing_urls=existing_urls),
         fetch_rss_startups(existing_urls=existing_urls),
     )
 
-    # Dedup within this batch by hn_url (in case sources overlap)
     seen_in_batch: set[str] = set()
     all_posts = []
     source_counts = {"hn": 0, "github": 0, "rss": 0}
@@ -601,13 +616,13 @@ async def refresh_feed(session: Session = Depends(get_session)):
     to_score = []
     for post in all_posts:
         startup = Startup(**post)
+        startup.user_id = user_id
         session.add(startup)
         to_score.append(startup)
 
     session.commit()
     new_count = len(to_score)
 
-    # Score new startups concurrently (max 10 to keep latency reasonable)
     batch = to_score[:10]
     for startup in batch:
         session.refresh(startup)
@@ -633,39 +648,42 @@ async def refresh_feed(session: Session = Depends(get_session)):
     fetched = len(hn_posts) + len(github_repos) + len(rss_startups)
 
     return RefreshStatus(
-        fetched=fetched,
-        new=new_count,
-        scored=scored_count,
+        fetched=fetched, new=new_count, scored=scored_count,
         message=f"HN: {hn_n} new, GitHub: {gh_n} new, News: {rss_n} new — scored {scored_count}.",
     )
 
 
 @app.post("/api/reset")
-def reset_database(session: Session = Depends(get_session)):
-    """Delete all startups and re-seed from seed_data + user_startups.json."""
-    all_startups = session.exec(select(Startup)).all()
-    for startup in all_startups:
+def reset_database(
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Delete all of this user's startups and re-seed."""
+    user_startups = session.exec(select(Startup).where(Startup.user_id == user_id)).all()
+    for startup in user_startups:
         session.delete(startup)
     session.commit()
 
     for data in SEED_STARTUPS:
-        session.add(_make_startup(data))
-
-    user_startups = _load_user_startups()
-    for data in user_startups:
-        session.add(_make_startup(data))
-
+        startup = _make_startup(data)
+        startup.user_id = user_id
+        session.add(startup)
     session.commit()
 
-    total = len(SEED_STARTUPS) + len(user_startups)
-    return {"cleared": len(all_startups), "seeded": total, "message": f"Cleared {len(all_startups)} entries, re-seeded {len(SEED_STARTUPS)} curated + {len(user_startups)} user-added startups."}
+    return {
+        "cleared": len(user_startups),
+        "seeded": len(SEED_STARTUPS),
+        "message": f"Cleared {len(user_startups)} entries, re-seeded {len(SEED_STARTUPS)} curated startups.",
+    }
 
 
 @app.post("/api/score-all")
-async def score_all_unscored(session: Session = Depends(get_session)):
-    """Score all unscored startups concurrently (capped at 20 per call)."""
+async def score_all_unscored(
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     unscored = session.exec(
-        select(Startup).where(Startup.fit_score == None)
+        select(Startup).where(Startup.user_id == user_id).where(Startup.fit_score == None)
     ).all()
 
     batch = unscored[:20]
@@ -674,14 +692,8 @@ async def score_all_unscored(session: Session = Depends(get_session)):
 
     loop = asyncio.get_running_loop()
     startup_dicts = [
-        {
-            "name": s.name,
-            "description": s.description,
-            "sector": s.sector,
-            "stage": s.stage,
-            "country": s.country,
-            "founders": s.founders,
-        }
+        {"name": s.name, "description": s.description, "sector": s.sector,
+         "stage": s.stage, "country": s.country, "founders": s.founders}
         for s in batch
     ]
     results = await asyncio.gather(
@@ -700,9 +712,11 @@ async def score_all_unscored(session: Session = Depends(get_session)):
 
 
 @app.get("/api/stats")
-def get_stats(session: Session = Depends(get_session)):
-    """Return dashboard summary statistics."""
-    all_startups = session.exec(select(Startup)).all()
+def get_stats(
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    all_startups = session.exec(select(Startup).where(Startup.user_id == user_id)).all()
 
     total = len(all_startups)
     scored = [s for s in all_startups if s.fit_score is not None]
@@ -712,22 +726,47 @@ def get_stats(session: Session = Depends(get_session)):
     avg_score = (sum(s.fit_score for s in scored) / len(scored)) if scored else 0
 
     return {
-        "total": total,
-        "scored": len(scored),
-        "high_fit": len(high_fit),
-        "sectors": len(sectors),
-        "countries": len(countries),
+        "total": total, "scored": len(scored), "high_fit": len(high_fit),
+        "sectors": len(sectors), "countries": len(countries),
         "avg_score": round(avg_score, 1),
     }
 
 
+@app.get("/api/config", response_model=UserConfigRead)
+def get_config(
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    rec = session.get(UserConfigRecord, user_id)
+    return UserConfigRead(thesis_notes=rec.thesis_notes if rec else None)
+
+
+@app.put("/api/config", response_model=UserConfigRead)
+def save_config(
+    body: UserConfigRead,
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    rec = session.get(UserConfigRecord, user_id)
+    if not rec:
+        rec = UserConfigRecord(user_id=user_id)
+    rec.thesis_notes = body.thesis_notes
+    rec.updated_at = datetime.utcnow()
+    session.add(rec)
+    session.commit()
+    return UserConfigRead(thesis_notes=rec.thesis_notes)
+
+
 @app.get("/api/export/pdf")
-def export_pdf(session: Session = Depends(get_session)):
-    """Export top 10 scored startups as a PDF report."""
+def export_pdf(
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
     from fpdf import FPDF
 
     top_startups = session.exec(
         select(Startup)
+        .where(Startup.user_id == user_id)
         .where(Startup.fit_score != None)
         .order_by(Startup.fit_score.desc())
         .limit(10)
@@ -737,7 +776,6 @@ def export_pdf(session: Session = Depends(get_session)):
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
 
-    # Header
     pdf.set_font("Helvetica", "B", 20)
     pdf.set_fill_color(10, 22, 40)
     pdf.set_text_color(255, 255, 255)
@@ -755,7 +793,6 @@ def export_pdf(session: Session = Depends(get_session)):
     pdf.set_y(50)
 
     for i, s in enumerate(top_startups, 1):
-        # Score color
         score = s.fit_score or 0
         if score >= 70:
             r, g, b = 34, 197, 94
@@ -764,7 +801,6 @@ def export_pdf(session: Session = Depends(get_session)):
         else:
             r, g, b = 239, 68, 68
 
-        # Card background
         card_y = pdf.get_y()
         if card_y > 240:
             pdf.add_page()
@@ -773,13 +809,11 @@ def export_pdf(session: Session = Depends(get_session)):
         pdf.set_fill_color(248, 250, 252)
         pdf.rect(10, card_y, 190, 48, "F")
 
-        # Rank + Name
         pdf.set_xy(14, card_y + 4)
         pdf.set_font("Helvetica", "B", 13)
         pdf.set_text_color(10, 22, 40)
         pdf.cell(0, 7, f"#{i}  {s.name}")
 
-        # Score badge
         pdf.set_fill_color(r, g, b)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font("Helvetica", "B", 11)
@@ -787,20 +821,17 @@ def export_pdf(session: Session = Depends(get_session)):
         pdf.set_xy(170, card_y + 4)
         pdf.cell(26, 7, f"{int(score)}/100", align="C")
 
-        # Metadata
         pdf.set_text_color(100, 116, 139)
         pdf.set_font("Helvetica", "", 9)
         pdf.set_xy(14, card_y + 13)
         pdf.cell(0, 5, f"{s.sector}  |  {s.stage}  |  {s.country}")
 
-        # Description
         pdf.set_text_color(51, 65, 85)
         pdf.set_font("Helvetica", "", 9)
         pdf.set_xy(14, card_y + 20)
         desc = s.description[:180] + "..." if len(s.description) > 180 else s.description
         pdf.multi_cell(162, 4, desc)
 
-        # Rationale
         if s.score_rationale:
             pdf.set_text_color(100, 116, 139)
             pdf.set_font("Helvetica", "I", 8)
@@ -811,7 +842,6 @@ def export_pdf(session: Session = Depends(get_session)):
 
         pdf.set_y(card_y + 52)
 
-    # Footer
     pdf.set_y(-20)
     pdf.set_text_color(148, 163, 184)
     pdf.set_font("Helvetica", "I", 8)

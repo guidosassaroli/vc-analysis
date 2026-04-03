@@ -1,10 +1,15 @@
 from typing import Optional
 from datetime import datetime
+from sqlalchemy import Column, Uuid
 from sqlmodel import SQLModel, Field
 
 
 class Startup(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Uuid(as_uuid=False, native_uuid=True), index=True, nullable=True),
+    )
     name: str = Field(index=True)
     description: str
     sector: str = Field(index=True)
@@ -48,8 +53,21 @@ class Startup(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class UserConfigRecord(SQLModel, table=True):
+    user_id: str = Field(
+        sa_column=Column(Uuid(as_uuid=False, native_uuid=True), primary_key=True),
+    )
+    thesis_notes: Optional[str] = None   # injected into scoring prompts
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class UserConfigRead(SQLModel):
+    thesis_notes: Optional[str] = None
+
+
 class StartupRead(SQLModel):
     id: int
+    user_id: Optional[str]
     name: str
     description: str
     sector: str

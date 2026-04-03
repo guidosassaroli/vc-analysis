@@ -1,6 +1,6 @@
 # Elaia — Deal Flow Intelligence Dashboard
 
-A full-stack VC deal flow intelligence tool built for Elaia Partners. Fetches startups from public sources, scores them against Elaia's investment thesis using a multi-dimensional AI scoring engine, and generates structured due diligence memos — with analyst memory, pipeline tracking, and interactive AI-powered research.
+A full-stack VC deal flow intelligence tool built for Elaia Partners. Fetches startups from public sources, scores them against Elaia's investment thesis using a multi-dimensional AI scoring engine, and generates structured due diligence memos — with multi-user auth, analyst memory, pipeline tracking, and interactive AI-powered research.
 
 Built by [Guido Sassaroli](https://www.linkedin.com/in/guido-sassaroli-778548169/).
 
@@ -14,9 +14,9 @@ vc-dealflow/
 │   ├── main.py                 # All API routes
 │   ├── models.py               # SQLModel database models
 │   ├── database.py             # DB engine (SQLite or PostgreSQL)
+│   ├── auth.py                 # JWT verification via Supabase
 │   ├── seed_data.py            # Curated deep tech startups
 │   ├── claude_scorer.py        # AI scoring (subscores) & memo generation
-│   ├── user_startups.json      # Persisted manually-added startups
 │   ├── sources/
 │   │   ├── hn.py               # HackerNews Algolia API
 │   │   ├── github.py           # GitHub Search API
@@ -24,18 +24,26 @@ vc-dealflow/
 │   └── requirements.txt
 └── frontend/                   # React 18 + Vite + Tailwind CSS
     └── src/
-        ├── App.jsx
-        ├── api.js
+        ├── App.jsx             # Router + AuthProvider + ProtectedRoute
+        ├── api.js              # API client (auth headers injected automatically)
+        ├── lib/
+        │   └── supabase.js     # Supabase client (null in dev mode)
+        ├── context/
+        │   └── AuthContext.jsx # Auth state provider + useAuth hook
+        ├── pages/
+        │   ├── Login.jsx       # Magic link login page
+        │   └── AuthCallback.jsx# Supabase redirect handler
         ├── utils/
-        │   ├── scoreColors.js      # WCAG AA-compliant score color tokens
-        │   └── statusColors.js     # Pipeline status color tokens
+        │   ├── scoreColors.js  # WCAG AA-compliant score color tokens
+        │   └── statusColors.js # Pipeline status color tokens
         └── components/
-            ├── Header.jsx          # Nav + action buttons
+            ├── Header.jsx          # Nav + action buttons + user email + settings
             ├── AnalyticsPanel.jsx  # Collapsible stats + charts dashboard
             ├── FilterBar.jsx       # Sector/stage/country/source/score filters
             ├── StartupCard.jsx     # Startup card with score ring + status pill
             ├── MemoModal.jsx       # DD memo modal with chat, notes, subscores
             ├── AddStartupModal.jsx # Add startup from URL
+            ├── SettingsModal.jsx   # User settings + thesis notes + sign out
             └── LoadingOverlay.jsx
 ```
 
@@ -47,7 +55,7 @@ vc-dealflow/
 - Node.js 18+
 - Anthropic API key
 - (Optional) GitHub token for higher rate limits
-- (Optional) Supabase project for cloud persistence
+- (Optional) Supabase project for cloud persistence + multi-user auth
 
 ---
 
@@ -95,7 +103,7 @@ Dashboard available at `http://localhost:5173`.
 
 ## Environment Variables
 
-### Backend
+### Backend (`backend/.env`)
 
 | Variable | Required | Description |
 |---|---|---|
@@ -104,12 +112,15 @@ Dashboard available at `http://localhost:5173`.
 | `DATABASE_URL` | No | DB connection string (default: local SQLite) |
 | `ALLOWED_ORIGINS` | No | Comma-separated allowed origins (default: localhost) |
 | `GITHUB_TOKEN` | No | GitHub token for higher API rate limits |
+| `SUPABASE_JWT_SECRET` | Auth only | JWT secret from Supabase → Settings → API |
 
-### Frontend
+### Frontend (`frontend/.env.local`)
 
 | Variable | Required | Description |
 |---|---|---|
-| `VITE_API_URL` | Production only | Backend base URL, e.g. `https://your-backend.vercel.app` |
+| `VITE_API_URL` | Production only | Backend base URL, e.g. `https://your-backend.railway.app` |
+| `VITE_SUPABASE_URL` | Auth only | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Auth only | Supabase anon/public key |
 
 **Database options:**
 
@@ -121,11 +132,13 @@ DATABASE_URL=sqlite:///./dealflow.db
 DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
 ```
 
+> **Dev mode:** leave all Supabase variables unset — the app runs without any login, using a fixed dev user ID. Auth is only activated when `SUPABASE_JWT_SECRET` is present.
+
 ---
 
 ## First Run
 
-1. Backend auto-seeds curated deep tech startups on first launch
+1. Backend auto-seeds curated deep tech startups on first launch (per user)
 2. Open `http://localhost:5173`
 3. Click **Score All** to score all seeded startups (~10–20 seconds)
 4. Click **View Memo** on any scored card to open the full DD memo
@@ -137,9 +150,13 @@ DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supaba
 
 ## Features
 
+### Multi-user Auth (Supabase)
+
+Each user has a fully isolated data view — startups, scores, notes, and chat history are scoped to their account. Authentication uses Supabase magic links (passwordless email). The backend verifies JWTs on every request; no data leaks between users.
+
 ### AI Scoring — 5 subscores, 1 weighted total
 
-Each startup is evaluated across 5 dimensions independently (Claude cannot anchor on a single number):
+Each startup is evaluated across 5 dimensions independently (the AI cannot anchor on a single number):
 
 | Dimension | Weight | What's evaluated |
 |---|---|---|
@@ -149,13 +166,14 @@ Each startup is evaluated across 5 dimensions independently (Claude cannot ancho
 | **Geography** | 15% | FR/ES/IL/DE = strong; other EU = moderate; US-only = weak |
 | **Stage Fit** | 15% | Pre-Seed/Seed/Series A = strong; Series B+ = weak |
 
-The `fit_score` is computed deterministically in Python as a weighted average — Claude never picks the final number.
+The `fit_score` is computed deterministically in Python as a weighted average — the AI never picks the final number.
 
 ### Analyst Memory
 
 - **Notes** — free-text field per startup, saved on blur, amber-highlighted in the modal
 - **Persistent chat** — conversations survive page refreshes (stored as JSON in DB)
 - **Feedback-aware rescoring** — when you click Re-score, the scoring prompt includes your notes and the last 6 user messages from the chat. Write "the CEO has a PhD from MIT" → re-score → Team subscore adjusts automatically
+- **Custom thesis notes** — per-user instructions injected into every scoring prompt, configurable via the Settings modal
 
 ### DD Memos
 
@@ -201,6 +219,8 @@ Fetches concurrently from HackerNews ("Show HN"), GitHub Search (5 sector querie
 
 ## API Endpoints
 
+All endpoints require a valid `Authorization: Bearer <token>` header when `SUPABASE_JWT_SECRET` is set. In dev mode (no JWT secret), auth is bypassed.
+
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/startups` | List startups (`?sector=AI/ML&stage=Seed&country=France&min_score=70`) |
@@ -215,9 +235,44 @@ Fetches concurrently from HackerNews ("Show HN"), GitHub Search (5 sector querie
 | DELETE | `/api/startups/{id}` | Remove from pipeline |
 | POST | `/api/refresh` | Fetch from HN + GitHub + RSS (scores up to 10 concurrently) |
 | POST | `/api/score-all` | Score all unscored startups (up to 20 concurrently) |
-| POST | `/api/reset` | Clear all and re-seed |
+| POST | `/api/reset` | Clear user's startups and re-seed |
 | GET | `/api/stats` | Dashboard KPIs |
+| GET | `/api/config` | Get user config (thesis notes) |
+| PUT | `/api/config` | Save user config |
 | GET | `/api/export/pdf` | Download top 10 as PDF |
+
+---
+
+## Deployment
+
+### Backend → Railway
+
+1. New Railway project → connect repo → Root Directory: `backend`
+2. Add environment variables:
+
+| Variable | Value |
+|---|---|
+| `ANTHROPIC_API_KEY` | your key |
+| `DATABASE_URL` | Supabase PostgreSQL connection string |
+| `SUPABASE_JWT_SECRET` | Supabase → Settings → API → JWT Secret |
+| `ALLOWED_ORIGINS` | your Vercel frontend URL |
+
+### Frontend → Vercel
+
+1. New Vercel project → Root Directory: `frontend` → Framework: **Vite**
+2. Add environment variables:
+
+| Variable | Value |
+|---|---|
+| `VITE_API_URL` | your Railway backend URL |
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key |
+
+### Supabase Auth setup
+
+1. Authentication → URL Configuration → **Site URL**: your Vercel URL
+2. Add to **Redirect URLs**: `https://your-app.vercel.app/auth/callback`
+3. For local dev, also add: `http://localhost:5173/auth/callback`
 
 ---
 
@@ -245,28 +300,10 @@ Fetches concurrently from HackerNews ("Show HN"), GitHub Search (5 sector querie
 
 ## Customization
 
-- **Scoring thesis** — edit `backend/claude_scorer.py` (prompts + subscore weights)
+- **Scoring thesis** — edit `backend/claude_scorer.py` (prompts + subscore weights), or use the in-app Settings modal for per-user thesis notes
 - **Seed startups** — edit `backend/seed_data.py`
 - **AI model** — set `ANTHROPIC_MODEL` in `.env` (default: `claude-sonnet-4-6`)
 - **Sectors / Countries** — edit `frontend/src/components/FilterBar.jsx`
-
----
-
-## Deployment (Vercel)
-
-Deploy backend and frontend as two separate Vercel projects from the same repo.
-
-> **Note:** Vercel Hobby plan has a 10s function timeout. AI scoring and memo calls take 15–30s — use Vercel Pro (60s timeout) for reliable operation.
-
-### Backend
-1. New Vercel project → Root Directory: `backend`
-2. Add env vars: `ANTHROPIC_API_KEY`, `DATABASE_URL` (Supabase), `ALLOWED_ORIGINS`
-3. Deploy — `vercel.json` configures the Python runtime automatically
-
-### Frontend
-1. New Vercel project → Root Directory: `frontend` → Framework: **Vite**
-2. Add env var: `VITE_API_URL` → your deployed backend URL
-3. Deploy
 
 ---
 

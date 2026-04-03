@@ -1,13 +1,19 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import { supabase } from './lib/supabase'
 import Header from './components/Header'
 import FilterBar from './components/FilterBar'
 import StartupCard from './components/StartupCard'
 import AnalyticsPanel from './components/AnalyticsPanel'
 import { SkeletonCard } from './components/LoadingOverlay'
 import { getStartups, getStats } from './api'
+import Login from './pages/Login'
+import AuthCallback from './pages/AuthCallback'
 
 const MemoModal = lazy(() => import('./components/MemoModal'))
 const AddStartupModal = lazy(() => import('./components/AddStartupModal'))
+const SettingsModal = lazy(() => import('./components/SettingsModal'))
 
 const DEFAULT_FILTERS = {
   sector: 'All',
@@ -40,7 +46,7 @@ function EmptyState({ filters, onReset }) {
   )
 }
 
-export default function App() {
+function Dashboard() {
   const [allStartups, setAllStartups] = useState([])
   const [stats, setStats] = useState(null)
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
@@ -48,6 +54,7 @@ export default function App() {
   const [error, setError] = useState(null)
   const [selectedStartup, setSelectedStartup] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -69,7 +76,6 @@ export default function App() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Client-side filtering (search + server-side handled by API)
   const filteredStartups = useMemo(() => {
     let result = [...allStartups]
 
@@ -104,7 +110,6 @@ export default function App() {
 
   const handleStartupUpdated = useCallback((updated) => {
     setAllStartups(prev => prev.map(s => s.id === updated.id ? updated : s))
-    // Use functional update to avoid closing over selectedStartup
     setSelectedStartup(prev => prev?.id === updated.id ? updated : prev)
     getStats().then(setStats).catch(console.error)
   }, [])
@@ -124,13 +129,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header onRefresh={fetchData} onScoreAll={fetchData} onCleared={fetchData} onAdd={() => setShowAddModal(true)} />
+      <Header
+        onRefresh={fetchData}
+        onScoreAll={fetchData}
+        onCleared={fetchData}
+        onAdd={() => setShowAddModal(true)}
+        onOpenSettings={() => setShowSettingsModal(true)}
+      />
 
       <main className="max-w-screen-2xl mx-auto px-6 py-8">
-        {/* Analytics Panel (includes stats + charts) */}
         {!loading && <AnalyticsPanel startups={allStartups} stats={stats} />}
 
-        {/* Page Title */}
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Deal Flow Pipeline</h1>
@@ -153,7 +162,6 @@ export default function App() {
           )}
         </div>
 
-        {/* Filter Bar */}
         <FilterBar
           filters={filters}
           onChange={setFilters}
@@ -161,7 +169,6 @@ export default function App() {
           totalAll={allStartups.length}
         />
 
-        {/* Error State */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center mb-6">
             <div className="text-2xl mb-2">⚠️</div>
@@ -175,13 +182,12 @@ export default function App() {
           </div>
         )}
 
-        {/* Card Grid */}
         {!error && (
           <div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-          aria-busy={loading}
-          aria-label="Startup pipeline"
-        >
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+            aria-busy={loading}
+            aria-label="Startup pipeline"
+          >
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
             ) : filteredStartups.length === 0 ? (
@@ -200,7 +206,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Footer */}
         {!loading && !error && (
           <div className="mt-12 pb-6 text-center text-xs text-slate-400">
             <p>Deal Flow Intelligence · Confidential internal tool</p>
@@ -219,7 +224,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Memo Modal — lazy loaded, only fetched on first open */}
       {selectedStartup && (
         <Suspense fallback={null}>
           <MemoModal
@@ -230,7 +234,6 @@ export default function App() {
         </Suspense>
       )}
 
-      {/* Add Startup Modal */}
       {showAddModal && (
         <Suspense fallback={null}>
           <AddStartupModal
@@ -239,6 +242,49 @@ export default function App() {
           />
         </Suspense>
       )}
+
+      {showSettingsModal && (
+        <Suspense fallback={null}>
+          <SettingsModal onClose={() => setShowSettingsModal(false)} />
+        </Suspense>
+      )}
     </div>
+  )
+}
+
+function ProtectedRoute({ children }) {
+  const { session } = useAuth()
+  if (session === undefined) {
+    // Still loading auth state
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-slate-200 border-t-elaia-navy rounded-full animate-spin" />
+      </div>
+    )
+  }
+  if (session === null && supabase) {
+    return <Navigate to="/login" replace />
+  }
+  return children
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }

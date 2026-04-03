@@ -1,5 +1,14 @@
+import { supabase } from './lib/supabase'
+
 const BASE_URL = (import.meta.env.VITE_API_URL ?? '') + '/api'
 const TIMEOUT_MS = 120_000
+
+async function getAuthHeaders() {
+  if (!supabase) return {}
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return {}
+  return { Authorization: `Bearer ${session.access_token}` }
+}
 
 async function request(method, path, { params, json, responseType } = {}) {
   const controller = new AbortController()
@@ -12,9 +21,14 @@ async function request(method, path, { params, json, responseType } = {}) {
       }
     }
 
+    const authHeaders = await getAuthHeaders()
+
     const res = await fetch(url, {
       method,
-      headers: json != null ? { 'Content-Type': 'application/json' } : {},
+      headers: {
+        ...(json != null ? { 'Content-Type': 'application/json' } : {}),
+        ...authHeaders,
+      },
       body: json != null ? JSON.stringify(json) : undefined,
       signal: controller.signal,
     })
@@ -37,6 +51,7 @@ const get    = (path, opts) => request('GET',    path, opts)
 const post   = (path, opts) => request('POST',   path, opts)
 const patch  = (path, opts) => request('PATCH',  path, opts)
 const del    = (path, opts) => request('DELETE', path, opts)
+const put    = (path, opts) => request('PUT',    path, opts)
 
 export const updateStatus     = (id, status) => patch(`/startups/${id}/status`, { json: { status } })
 export const updateNotes      = (id, user_notes) => patch(`/startups/${id}/notes`, { json: { user_notes } })
@@ -45,13 +60,15 @@ export const chatWithStartup  = (id, message, history) => post(`/startups/${id}/
 export const deleteStartup    = (id) => del(`/startups/${id}`)
 export const getStartups      = (filters = {}) => get('/startups', { params: filters })
 export const startupFromUrl   = (url) => post('/startups/from-url', { json: { url } })
-export const getStartup   = (id) => get(`/startups/${id}`)
-export const scoreStartup = (id) => post(`/startups/${id}/score`)
-export const generateMemo = (id) => post(`/startups/${id}/memo`)
-export const refreshFeed  = ()  => post('/refresh')
-export const scoreAll     = ()  => post('/score-all')
-export const clearAll     = ()  => post('/reset')
-export const getStats     = ()  => get('/stats')
+export const getStartup       = (id) => get(`/startups/${id}`)
+export const scoreStartup     = (id) => post(`/startups/${id}/score`)
+export const generateMemo     = (id) => post(`/startups/${id}/memo`)
+export const refreshFeed      = ()  => post('/refresh')
+export const scoreAll         = ()  => post('/score-all')
+export const clearAll         = ()  => post('/reset')
+export const getStats         = ()  => get('/stats')
+export const getConfig        = ()  => get('/config')
+export const saveConfig       = (data) => put('/config', { json: data })
 
 export const exportPdf = async () => {
   const blob = await get('/export/pdf', { responseType: 'blob' })
