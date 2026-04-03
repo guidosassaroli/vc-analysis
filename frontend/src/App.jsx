@@ -210,15 +210,15 @@ function Dashboard() {
           <div className="mt-12 pb-6 text-center text-xs text-slate-400">
             <p>Deal Flow Intelligence · Confidential internal tool</p>
             <p className="mt-1">
-              Built by{' '}
-              <a
+              {/* Built by{' '} */}
+              {/* <a
                 href="https://www.linkedin.com/in/guido-sassaroli-778548169/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-slate-500 hover:text-brand-navy underline underline-offset-2 transition-colors"
               >
                 Guido Sassaroli
-              </a>
+              </a> */}
             </p>
           </div>
         )}

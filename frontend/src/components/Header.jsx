@@ -130,14 +130,14 @@ export default function Header({ onScoreAll, onCleared, onAdd, onOpenSettings })
               <span className="text-white font-semibold tracking-tight text-[14px] leading-none">
                 Deal Flow Intelligence
               </span>
-              <a
+              {/* <a
                 href="https://www.linkedin.com/in/guido-sassaroli-778548169/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-white/25 hover:text-white/50 text-[11px] hidden md:block transition-colors"
               >
                 by Guido Sassaroli
-              </a>
+              </a> */}
             </div>
           </div>
 
