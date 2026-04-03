@@ -4,10 +4,10 @@ export default function LoadingOverlay({ message = 'Loading…' }) {
       <div className="bg-white rounded-2xl shadow-2xl px-10 py-8 flex flex-col items-center gap-4 max-w-sm mx-4">
         {/* Animated logo */}
         <div className="relative w-16 h-16">
-          <div className="absolute inset-0 rounded-full border-4 border-brand-light/30" />
-          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-brand-navy animate-spin" />
-          <div className="absolute inset-2 rounded-full bg-brand-navy flex items-center justify-center">
-            <span className="text-teal-100 font-bold text-xl">VC</span>
+          <div className="absolute inset-0 rounded-full border-[3px] border-slate-100" />
+          <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-brand-accent animate-spin" />
+          <div className="absolute inset-2.5 rounded-full bg-slate-50 flex items-center justify-center">
+            <span className="text-brand-accent font-semibold text-sm tracking-tight">VC</span>
           </div>
         </div>
         <div className="text-center">

@@ -3,21 +3,74 @@
 @tailwind utilities;
 
 @layer base {
-  * {
+  *,
+  *::before,
+  *::after {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   html {
+    font-optical-sizing: auto;
+    /* Inter variable: disambiguation, alternate 6/9, slashed zero */
+    font-feature-settings: 'cv11' 1, 'ss01' 1, 'zero' 1, 'calt' 1;
     scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
   }
 
   body {
-    @apply bg-slate-50 text-gray-900;
+    @apply bg-slate-50 text-slate-900 font-sans;
+    font-variation-settings: 'opsz' 16;
+    letter-spacing: -0.012em;
+  }
+
+  /* Headings get tighter tracking */
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.025em;
+    font-variation-settings: 'opsz' 24;
+  }
+
+  /* Tabular numbers for data */
+  [data-numeral], .numeral {
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+    font-variant-numeric: tabular-nums lining-nums;
   }
 }
 
 @layer components {
+  /* ── Buttons ── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 px-3.5 py-[7px] rounded-lg font-medium text-[13px] leading-none transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 whitespace-nowrap select-none;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-accent text-white hover:bg-brand-accent/90 focus:ring-brand-accent/40 shadow-sm;
+  }
+
+  .btn-secondary {
+    @apply btn bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 focus:ring-slate-300/50 shadow-sm;
+  }
+
+  .btn-ghost {
+    @apply btn text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus:ring-slate-300/50;
+  }
+
+  /* ── Cards ── */
+  .card {
+    @apply bg-white border border-slate-200/70 rounded-xl transition-shadow duration-200;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  }
+
+  .card:hover {
+    box-shadow: 0 4px 16px 0 rgb(0 0 0 / 0.07), 0 1px 3px 0 rgb(0 0 0 / 0.04);
+  }
+
+  /* ── Tags / Pills ── */
+  .tag {
+    @apply inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium tracking-wide;
+  }
+
+  /* ── Score badge ── */
   .score-badge {
     @apply inline-flex items-center justify-center font-bold rounded-full text-white text-sm;
     min-width: 2.5rem;
@@ -25,43 +78,20 @@
     padding: 0 0.5rem;
   }
 
-  .tag {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
-
-  .card {
-    @apply bg-white rounded-xl border border-slate-200 shadow-sm transition-all duration-200;
-  }
-
-  .card:hover {
-    @apply shadow-md border-slate-300;
-    transform: translateY(-1px);
-  }
-
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2;
-  }
-
-  .btn-primary {
-    @apply btn bg-brand-accent text-white hover:bg-brand-dark focus:ring-brand-accent;
-  }
-
-  .btn-secondary {
-    @apply btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 focus:ring-slate-400;
-  }
-
-  .btn-ghost {
-    @apply btn text-slate-600 hover:bg-slate-100 focus:ring-slate-400;
-  }
-
+  /* ── Modal ── */
   .modal-overlay {
-    @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4;
+    @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4;
     animation: fadeIn 0.15s ease-out;
   }
 
   .modal-content {
     @apply bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col;
     animation: slideUp 0.2s ease-out;
+  }
+
+  /* ── Section label (filters, analytics) ── */
+  .section-label {
+    @apply text-[10px] font-semibold uppercase tracking-widest text-slate-400;
   }
 }
 
@@ -71,37 +101,57 @@
   scrollbar-color: #cbd5e1 transparent;
 }
 
-/* Webkit scrollbar styling */
+/* Webkit scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full;
+  @apply bg-slate-200 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-400;
+  @apply bg-slate-300;
 }
 
-/* Loading skeleton shimmer */
+/* Loading skeleton */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
+  0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 
 .skeleton {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background: linear-gradient(90deg, #f1f5f9 25%, #e8ecf0 50%, #f1f5f9 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 1.4s ease-in-out infinite;
 }
 
-/* Respect user preference for reduced motion */
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Tailwind animation classes */
+.animate-fade-in  { animation: fadeIn  0.2s ease-out; }
+.animate-slide-up { animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

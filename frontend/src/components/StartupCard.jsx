@@ -3,45 +3,38 @@ import { scoreStartup, deleteStartup } from '../api'
 import { getScoreColor } from '../utils/scoreColors'
 import { getStatusClass } from '../utils/statusColors'
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-
-// All use -100 bg + ring-1 ring-*-200 to match sector tag pattern
-const SECTOR_COLORS = {
-  'AI/ML':               'bg-violet-100 text-violet-700 ring-1 ring-violet-200',
-  'Biotech':             'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200',
-  'Quantum':             'bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200',
-  'Cybersecurity':       'bg-red-100 text-red-700 ring-1 ring-red-200',
-  'Climate Tech':        'bg-green-100 text-green-700 ring-1 ring-green-200',
-  'Semiconductors':      'bg-orange-100 text-orange-700 ring-1 ring-orange-200',
-  'Fintech':             'bg-blue-100 text-blue-700 ring-1 ring-blue-200',
-  'Industrial Robotics': 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
-  'Software':            'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200',
-}
-
-// Normalized: all use -100 bg + ring-1 (Pre-Seed was missing ring)
-const STAGE_COLORS = {
-  'Pre-Seed': 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
-  'Seed':     'bg-amber-100 text-amber-700 ring-1 ring-amber-200',
-  'Series A': 'bg-blue-100 text-blue-700 ring-1 ring-blue-200',
-  'Series B': 'bg-purple-100 text-purple-700 ring-1 ring-purple-200',
-}
-
-// Normalized: all use -100 bg + ring-1, matching sector/stage pattern
-const SOURCE_BADGE = {
-  'seed':   { label: 'Curated', class: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200' },
-  'hn':     { label: 'HN',      class: 'bg-orange-100 text-orange-700 ring-1 ring-orange-200' },
-  'github': { label: 'GitHub',  class: 'bg-purple-100 text-purple-700 ring-1 ring-purple-200' },
-  'rss':    { label: 'News',    class: 'bg-sky-100 text-sky-700 ring-1 ring-sky-200' },
-  'manual': { label: 'Added',   class: 'bg-teal-100 text-teal-700 ring-1 ring-teal-200' },
+// ─── Sector dots ─────────────────────────────────────────────────────────────
+const SECTOR_DOTS = {
+  'AI/ML':               'bg-violet-400',
+  'Biotech':             'bg-emerald-400',
+  'Quantum':             'bg-cyan-400',
+  'Cybersecurity':       'bg-red-400',
+  'Climate Tech':        'bg-green-400',
+  'Semiconductors':      'bg-orange-400',
+  'Fintech':             'bg-blue-400',
+  'Industrial Robotics': 'bg-slate-400',
+  'Software':            'bg-indigo-400',
 }
 
 const COUNTRY_FLAGS = {
   'France': '🇫🇷', 'Germany': '🇩🇪', 'Spain': '🇪🇸', 'Israel': '🇮🇱',
   'United Kingdom': '🇬🇧', 'Sweden': '🇸🇪', 'Netherlands': '🇳🇱',
+  'Switzerland': '🇨🇭', 'Finland': '🇫🇮', 'Denmark': '🇩🇰',
+}
+
+const SOURCE_LABELS = {
+  seed: 'Curated', hn: 'HN', github: 'GitHub', rss: 'News', manual: 'Added',
+}
+
+const STATUS_STYLES = {
+  'Sourced':        'bg-slate-100 text-slate-500',
+  'In Review':      'bg-blue-50 text-blue-600',
+  'Meeting Booked': 'bg-violet-50 text-violet-600',
+  'Term Sheet':     'bg-emerald-50 text-emerald-600',
+  'Pass':           'bg-red-50 text-red-500',
 }
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
-
 const BoltIcon = () => (
   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -49,53 +42,62 @@ const BoltIcon = () => (
 )
 
 const TrashIcon = () => (
-  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
   </svg>
 )
 
-// ─── ScoreBadge ───────────────────────────────────────────────────────────────
+const ArrowUpRightIcon = () => (
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+  </svg>
+)
 
-const SCORE_RING_RADIUS = 22
-const SCORE_RING_CIRCUMFERENCE = 2 * Math.PI * SCORE_RING_RADIUS
+// ─── Score ring ───────────────────────────────────────────────────────────────
+const RING_R = 19
+const RING_C = 2 * Math.PI * RING_R
 
 function ScoreBadge({ score }) {
   if (score == null) {
     return (
       <div
-        className="w-14 h-14 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center"
+        className="w-12 h-12 rounded-full border-2 border-dashed border-slate-200 flex items-center justify-center shrink-0"
         role="img"
         aria-label="Not yet scored"
       >
-        <span className="text-slate-400 text-xs font-medium" aria-hidden="true">?</span>
+        <span className="text-slate-300 text-[11px] font-medium">—</span>
       </div>
     )
   }
 
   const pct = Math.min(100, Math.max(0, score))
   const { hex } = getScoreColor(pct)
-  const offset = SCORE_RING_CIRCUMFERENCE - (pct / 100) * SCORE_RING_CIRCUMFERENCE
+  const offset = RING_C - (pct / 100) * RING_C
 
   return (
     <div
-      className="relative w-14 h-14 flex items-center justify-center"
+      className="relative w-12 h-12 shrink-0 flex items-center justify-center"
       role="img"
       aria-label={`Fit score: ${Math.round(pct)} out of 100`}
     >
-      <svg className="absolute inset-0 -rotate-90" width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
-        <circle cx="28" cy="28" r={SCORE_RING_RADIUS} fill="none" stroke="#e2e8f0" strokeWidth="4" />
+      <svg className="absolute inset-0 -rotate-90" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r={RING_R} fill="none" stroke="#f1f5f9" strokeWidth="2.5" />
         <circle
-          cx="28" cy="28" r={SCORE_RING_RADIUS}
+          cx="24" cy="24" r={RING_R}
           fill="none"
           stroke={hex}
-          strokeWidth="4"
-          strokeDasharray={SCORE_RING_CIRCUMFERENCE}
+          strokeWidth="2.5"
+          strokeDasharray={RING_C}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+          style={{ transition: 'stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }}
         />
       </svg>
-      <span className="relative z-10 font-bold text-sm" style={{ color: hex }} aria-hidden="true">
+      <span
+        className="relative z-10 text-[13px] font-semibold numeral"
+        style={{ color: hex }}
+        aria-hidden="true"
+      >
         {Math.round(pct)}
       </span>
     </div>
@@ -103,17 +105,17 @@ function ScoreBadge({ score }) {
 }
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
-
 function StartupCard({ startup, onViewMemo, onScored, onDeleted }) {
   const [scoring, setScoring] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const confirmTimerRef = useRef(null)
 
-  const sectorClass = SECTOR_COLORS[startup.sector] || 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
-  const stageClass  = STAGE_COLORS[startup.stage]   || 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
-  const flag        = COUNTRY_FLAGS[startup.country] || '🌍'
-  const sourceBadge = SOURCE_BADGE[startup.source]   || { label: startup.source, class: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200' }
+  const dotClass = SECTOR_DOTS[startup.sector] || 'bg-slate-300'
+  const flag = COUNTRY_FLAGS[startup.country] || '🌍'
+  const sourceLabel = SOURCE_LABELS[startup.source] || startup.source
+  const statusStyle = STATUS_STYLES[startup.status] || STATUS_STYLES['Sourced']
+  const status = startup.status || 'Sourced'
 
   const handleScore = async (e) => {
     e.stopPropagation()
@@ -153,70 +155,77 @@ function StartupCard({ startup, onViewMemo, onScored, onDeleted }) {
 
   return (
     <div className="card flex flex-col h-full animate-fade-in">
-      {/* Card Header */}
-      <div className="p-5 flex items-start justify-between gap-3 border-b border-slate-100">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-2">
-            <span className={`tag ${sectorClass}`}>{startup.sector}</span>
-            <span className={`tag ${stageClass}`}>{startup.stage}</span>
-            <span className={`tag ${sourceBadge.class}`}>{sourceBadge.label}</span>
-            <span className={`tag ${getStatusClass(startup.status || 'Sourced')}`}>{startup.status || 'Sourced'}</span>
-          </div>
-          <h3 className="font-bold text-slate-900 text-base leading-tight truncate" title={startup.name}>
-            {startup.name}
-          </h3>
-          <div className="flex items-center gap-1.5 mt-1 text-sm text-slate-500">
-            <span aria-hidden="true">{flag}</span>
-            <span>{startup.country}</span>
-            {startup.founded_year && (
-              <>
-                <span className="text-slate-300" aria-hidden="true">·</span>
-                <span>Est. {startup.founded_year}</span>
-              </>
+
+      {/* Top */}
+      <div className="p-5 pb-4 flex items-start gap-3">
+        <div className="flex-1 min-w-0 space-y-2">
+          {/* Sector + status */}
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotClass}`} aria-hidden="true" />
+              {startup.sector}
+            </span>
+            {status !== 'Sourced' && (
+              <span className={`tag ${statusStyle} text-[10px]`}>{status}</span>
             )}
           </div>
+
+          {/* Name */}
+          <h3
+            className="font-semibold text-slate-900 text-[15px] leading-snug tracking-tight truncate"
+            title={startup.name}
+          >
+            {startup.name}
+          </h3>
+
+          {/* Metadata line */}
+          <p className="text-[11.5px] text-slate-400 flex items-center gap-1 flex-wrap">
+            <span>{flag} {startup.country}</span>
+            {startup.founded_year && <><span aria-hidden="true">·</span><span>{startup.founded_year}</span></>}
+            <span aria-hidden="true">·</span>
+            <span>{startup.stage}</span>
+            <span aria-hidden="true">·</span>
+            <span>{sourceLabel}</span>
+          </p>
         </div>
 
-        <div className="shrink-0">
-          <ScoreBadge score={startup.fit_score} />
-        </div>
+        <ScoreBadge score={startup.fit_score} />
       </div>
 
-      {/* Description */}
-      <div className="px-5 py-4 flex-1">
-        <p className="text-slate-600 text-sm leading-relaxed line-clamp-3 break-words">
+      {/* Body */}
+      <div className="px-5 pb-4 flex-1 space-y-3">
+        <p className="text-[13px] text-slate-500 leading-relaxed line-clamp-3">
           {startup.description}
         </p>
 
         {startup.founders && (
-          <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
-            <span aria-hidden="true">👥</span>
-            <span className="line-clamp-1">{startup.founders}</span>
+          <p className="text-[12px] text-slate-400 line-clamp-1 flex items-center gap-1">
+            <span className="text-slate-300" aria-hidden="true">—</span>
+            {startup.founders}
           </p>
         )}
 
         {startup.score_rationale && (
-          <div className="mt-3 pt-3 border-t border-slate-100">
-            <p className="text-xs text-slate-500 italic line-clamp-2">
-              "{startup.score_rationale}"
-            </p>
-          </div>
+          <p className="text-[12px] text-slate-400 italic line-clamp-2 pt-3 border-t border-slate-50">
+            "{startup.score_rationale}"
+          </p>
         )}
 
         {startup.red_flag && (
-          <div className="mt-2 flex items-start gap-1.5">
-            <span className="text-amber-500 text-xs mt-0.5" aria-hidden="true">⚠</span>
-            <p className="text-xs text-amber-700 line-clamp-1">{startup.red_flag}</p>
+          <div className="flex items-start gap-1.5 text-[12px] text-amber-600/90">
+            <span className="shrink-0 mt-px" aria-hidden="true">⚠</span>
+            <span className="line-clamp-1">{startup.red_flag}</span>
           </div>
         )}
       </div>
 
-      {/* Actions */}
-      <div className="px-5 pb-4 flex items-center gap-2 border-t border-slate-100 pt-3">
+      {/* Footer */}
+      <div className="px-4 pb-4 pt-3 flex items-center gap-1.5 border-t border-slate-50">
+        {/* Primary action */}
         {startup.fit_score != null ? (
           <button
             onClick={() => onViewMemo?.(startup)}
-            className="btn-primary flex-1 text-sm"
+            className="btn-primary flex-1 text-[12.5px] py-[7px]"
           >
             View Memo
           </button>
@@ -224,84 +233,66 @@ function StartupCard({ startup, onViewMemo, onScored, onDeleted }) {
           <button
             onClick={handleScore}
             disabled={scoring}
-            className="btn-primary flex-1 text-sm disabled:opacity-60"
+            className="btn-primary flex-1 text-[12.5px] py-[7px] disabled:opacity-60"
           >
             {scoring ? (
               <>
-                <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
+                <span className="w-3 h-3 border-[1.5px] border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
                 Scoring…
               </>
             ) : (
-              <>
-                <BoltIcon /> Score
-              </>
+              <><BoltIcon /> Score</>
             )}
           </button>
         )}
 
+        {/* External link */}
         {startup.website && (
           <a
             href={startup.website}
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
-            className="btn-secondary text-sm px-3"
+            className="btn-ghost px-2.5 py-[7px] text-slate-400 hover:text-slate-600"
             aria-label="Visit website"
+            title={startup.website}
           >
-            ↗
+            <ArrowUpRightIcon />
           </a>
         )}
 
-        {startup.hn_url && startup.source === 'hn' && (
+        {/* HN / GitHub / RSS link */}
+        {startup.hn_url && (
           <a
             href={startup.hn_url}
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
-            className="btn-ghost text-xs px-3 min-h-[2.75rem] text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-            aria-label="View on HackerNews"
+            className={`btn-ghost px-2.5 py-[7px] text-[11px] font-semibold ${
+              startup.source === 'hn'     ? 'text-orange-400 hover:text-orange-600 hover:bg-orange-50' :
+              startup.source === 'github' ? 'text-slate-400 hover:text-slate-600' :
+              'text-sky-400 hover:text-sky-600 hover:bg-sky-50'
+            }`}
+            aria-label={`View on ${startup.source === 'hn' ? 'HN' : startup.source === 'github' ? 'GitHub' : 'source'}`}
           >
-            HN
-          </a>
-        )}
-        {startup.hn_url && startup.source === 'github' && (
-          <a
-            href={startup.hn_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-            className="btn-ghost text-xs px-3 min-h-[2.75rem] text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-            aria-label="View on GitHub"
-          >
-            <span aria-hidden="true">🐙</span>
-          </a>
-        )}
-        {startup.hn_url && startup.source === 'rss' && (
-          <a
-            href={startup.hn_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-            className="btn-ghost text-xs px-3 min-h-[2.75rem] text-sky-600 hover:text-sky-700 hover:bg-sky-50"
-            aria-label="Read article"
-          >
-            <span aria-hidden="true">📰</span>
+            {startup.source === 'hn' ? 'HN' : startup.source === 'github' ? '⌥' : '↗'}
           </a>
         )}
 
+        {/* Delete */}
         <button
           onClick={handleDeleteClick}
           disabled={deleting}
-          aria-label={confirmDelete ? 'Confirm remove startup' : 'Remove startup from pipeline'}
-          title={confirmDelete ? 'Click again to confirm' : 'Remove from pipeline'}
-          className={`btn-ghost text-xs px-3 min-h-[2.75rem] transition-colors disabled:opacity-50 ${
+          aria-label={confirmDelete ? 'Confirm remove' : 'Remove from pipeline'}
+          title={confirmDelete ? 'Click again to confirm' : 'Remove'}
+          className={`btn-ghost px-2.5 py-[7px] disabled:opacity-40 transition-colors ${
             confirmDelete
-              ? 'text-red-600 hover:text-red-700 hover:bg-red-50'
-              : 'text-slate-400 hover:text-red-500 hover:bg-red-50'
+              ? 'text-red-500 hover:text-red-600 hover:bg-red-50'
+              : 'text-slate-300 hover:text-red-400 hover:bg-red-50'
           }`}
         >
           {deleting
-            ? <span className="w-3 h-3 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" aria-hidden="true" />
+            ? <span className="w-3 h-3 border-[1.5px] border-slate-200 border-t-slate-400 rounded-full animate-spin" />
             : <TrashIcon />
           }
         </button>

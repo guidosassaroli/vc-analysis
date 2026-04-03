@@ -136,21 +136,22 @@ export default function AnalyticsPanel({ startups, stats }) {
         <div id="analytics-panel" className="mt-4 space-y-4">
 
           {/* Stats grid */}
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
             {STAT_ITEMS.map(item => (
               <div
                 key={item.key}
-                className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-sm transition-shadow"
+                className="bg-white rounded-xl border border-slate-200/70 px-4 py-3.5 transition-shadow hover:shadow-sm"
+                style={{ boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.03)' }}
               >
-                <div className={`text-2xl font-bold ${item.color} leading-none mb-1`}>
+                <div className={`text-[22px] font-semibold tracking-tight numeral ${item.color} leading-none mb-1.5`}>
                   {stats ? (stats[item.key] ?? '—') : (
-                    <div className="skeleton h-6 w-12 rounded" />
+                    <div className="skeleton h-6 w-10 rounded" />
                   )}
                   {item.suffix && stats && (
-                    <span className="text-sm font-normal text-slate-400">{item.suffix}</span>
+                    <span className="text-xs font-normal text-slate-300 ml-0.5">{item.suffix}</span>
                   )}
                 </div>
-                <div className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
+                <div className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5">
                   <item.Icon />
                   <span>{item.label}</span>
                 </div>
@@ -159,9 +160,9 @@ export default function AnalyticsPanel({ startups, stats }) {
           </div>
 
           {/* Charts grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+            <div className="bg-white rounded-xl border border-slate-200/70 p-4" style={{ boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.03)' }}>
+              <h4 className="section-label mb-3">
                 Sector Distribution
               </h4>
               <ResponsiveContainer width="100%" height={200}>
@@ -174,8 +175,8 @@ export default function AnalyticsPanel({ startups, stats }) {
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+            <div className="bg-white rounded-xl border border-slate-200/70 p-4" style={{ boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.03)' }}>
+              <h4 className="section-label mb-3">
                 Score Distribution
               </h4>
               <ResponsiveContainer width="100%" height={200}>
@@ -192,8 +193,8 @@ export default function AnalyticsPanel({ startups, stats }) {
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+            <div className="bg-white rounded-xl border border-slate-200/70 p-4" style={{ boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.03)' }}>
+              <h4 className="section-label mb-3">
                 Stage Breakdown
               </h4>
               <ResponsiveContainer width="100%" height={200}>

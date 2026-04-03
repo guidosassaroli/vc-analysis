@@ -5,15 +5,15 @@ export default {
     extend: {
       colors: {
         brand: {
-          navy:   '#0e847f',
-          dark:   '#0a6b66',
-          mid:    '#0d726d',
-          accent: '#0e847f',
+          navy:   '#0f172a',  // header / dark chrome
+          dark:   '#1e293b',
+          mid:    '#334155',
+          accent: '#0e847f',  // teal — interactive only
           light:  '#14a89e',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Inter var"', '"Inter"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
       },
       animation: {
         'fade-in': 'fadeIn 0.2s ease-out',
