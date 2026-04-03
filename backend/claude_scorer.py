@@ -13,52 +13,26 @@ import anthropic
 
 MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
-SCORING_SYSTEM = """You are a senior investment analyst at a European deep tech venture capital firm investing across Paris, Barcelona, and Tel Aviv.
+# ─── Default thesis values (used when no user config is set) ─────────────────
 
-Investment thesis:
-STRONG FIT indicators:
-- Geography: France, Spain, Israel, Germany (European deep tech ecosystem)
-- Sectors: AI/ML infrastructure, Quantum Computing, Biotech/Drug Discovery, Cybersecurity, Climate Tech, Semiconductors, Industrial Robotics, Fintech Infrastructure
-- Stage: Pre-Seed, Seed, Series A
-- Team: Academic/PhD founders, university spinoffs, CNRS/INRIA/Pasteur/Fraunhofer/Weizmann/Unit 8200 backgrounds
-- Technical moat: proprietary research, patents, novel algorithms, hardware IP
-
-WEAK FIT indicators:
-- Pure SaaS with no deep tech differentiation
-- US-only focused companies
-- Late stage (Series B and beyond)
-- B2C consumer apps
-- Commodity tech with no IP protection
-
-Always respond with valid JSON only. No markdown, no explanation outside the JSON."""
-
-SCORING_PROMPT = """Analyze this startup against the investment thesis by scoring 5 dimensions independently.
-
-Startup:
-Name: {name}
-Description: {description}
-Sector: {sector}
-Stage: {stage}
-Country: {country}
-Founders: {founders}
-{analyst_context}
-Score each dimension 0–100 against the thesis criteria:
-- team (25%): academic pedigree, domain expertise, PhD/spinoff background, Unit 8200 / CNRS / INRIA / Fraunhofer / Weizmann credentials, prior exits
-- technology (25%): proprietary research, patents, novel algorithms, hardware IP, deep tech defensibility — penalize commodity SaaS
-- market (20%): TAM size, timing, growth signal, B2B vs B2C (B2C penalized)
-- geography (15%): France/Spain/Israel/Germany = strong fit; other EU = moderate; US-only = weak
-- stage (15%): Pre-Seed/Seed/Series A = strong; Series B = moderate; later = weak
-
-Respond with JSON in exactly this format:
-{{
-  "team": <integer 0-100>,
-  "technology": <integer 0-100>,
-  "market": <integer 0-100>,
-  "geography": <integer 0-100>,
-  "stage": <integer 0-100>,
-  "rationale": "<exactly 2 sentences summarising overall thesis fit>",
-  "red_flag": "<one specific red flag, or null if none>"
-}}"""
+_DEFAULT_GEOGRAPHIES = ["France", "Spain", "Israel", "Germany"]
+_DEFAULT_SECTORS = [
+    "AI/ML infrastructure", "Quantum Computing", "Biotech/Drug Discovery",
+    "Cybersecurity", "Climate Tech", "Semiconductors", "Industrial Robotics",
+    "Fintech Infrastructure",
+]
+_DEFAULT_STAGES = ["Pre-Seed", "Seed", "Series A"]
+_DEFAULT_TEAM_SIGNAL = (
+    "Academic/PhD founders, university spinoffs, "
+    "CNRS/INRIA/Pasteur/Fraunhofer/Weizmann/Unit 8200 backgrounds, prior exits"
+)
+_DEFAULT_TECH_SIGNAL = (
+    "Proprietary research, patents, novel algorithms, hardware IP, deep tech defensibility"
+)
+_DEFAULT_EXCLUSIONS = (
+    "Pure SaaS with no deep tech differentiation, US-only focused companies, "
+    "late stage (Series B and beyond), B2C consumer apps, commodity tech with no IP protection"
+)
 
 MEMO_SYSTEM = """You are a senior investment analyst writing internal due diligence memos.
 Write concise, analytical, and insightful content. Be direct and honest about both opportunities and risks.
@@ -76,7 +50,7 @@ Founders: {founders}
 Fit Score: {fit_score}/100
 Score Rationale: {rationale}
 Red Flag: {red_flag}
-
+{thesis_context}
 Write a structured memo in this JSON format. Each value must be 1-2 sentences only — be direct and specific:
 {{
   "problem": "<market problem and pain point — 1-2 sentences>",
@@ -88,15 +62,81 @@ Write a structured memo in this JSON format. Each value must be 1-2 sentences on
 }}"""
 
 
+def _build_scoring_system(thesis: Optional[dict]) -> str:
+    t = thesis or {}
+    geos = t.get("geographies") or _DEFAULT_GEOGRAPHIES
+    sectors = t.get("sectors") or _DEFAULT_SECTORS
+    stages = t.get("stages") or _DEFAULT_STAGES
+    team_signal = t.get("team_signal") or _DEFAULT_TEAM_SIGNAL
+    tech_signal = t.get("tech_signal") or _DEFAULT_TECH_SIGNAL
+    exclusions = t.get("exclusions") or _DEFAULT_EXCLUSIONS
+
+    geo_str = ", ".join(geos)
+    sector_str = ", ".join(sectors)
+    stage_str = ", ".join(stages)
+
+    return f"""You are a senior investment analyst at a European deep tech venture capital firm.
+
+Investment thesis:
+STRONG FIT indicators:
+- Geography: {geo_str}
+- Sectors: {sector_str}
+- Stage: {stage_str}
+- Team: {team_signal}
+- Technical moat: {tech_signal}
+
+WEAK FIT indicators:
+- {exclusions}
+
+Always respond with valid JSON only. No markdown, no explanation outside the JSON."""
+
+
+def _build_scoring_prompt(thesis: Optional[dict]) -> str:
+    t = thesis or {}
+    geos = t.get("geographies") or _DEFAULT_GEOGRAPHIES
+    stages = t.get("stages") or _DEFAULT_STAGES
+    team_signal = t.get("team_signal") or _DEFAULT_TEAM_SIGNAL
+    tech_signal = t.get("tech_signal") or _DEFAULT_TECH_SIGNAL
+
+    strong_geos = "/".join(geos[:4]) if geos else "France/Spain/Israel/Germany"
+    strong_stages = "/".join(stages) if stages else "Pre-Seed/Seed/Series A"
+
+    return """Analyze this startup against the investment thesis by scoring 5 dimensions independently.
+
+Startup:
+Name: {name}
+Description: {description}
+Sector: {sector}
+Stage: {stage}
+Country: {country}
+Founders: {founders}
+{analyst_context}
+Score each dimension 0–100 against the thesis criteria:
+- team (25%%): """ + team_signal + """ — penalize weak or unknown teams
+- technology (25%%): """ + tech_signal + """ — penalize commodity SaaS
+- market (20%%): TAM size, timing, growth signal, B2B vs B2C (B2C penalized)
+- geography (15%%): """ + strong_geos + """ = strong fit; other EU = moderate; outside target = weak
+- stage (15%%): """ + strong_stages + """ = strong; later stages = progressively weaker
+
+Respond with JSON in exactly this format:
+{{
+  "team": <integer 0-100>,
+  "technology": <integer 0-100>,
+  "market": <integer 0-100>,
+  "geography": <integer 0-100>,
+  "stage": <integer 0-100>,
+  "rationale": "<exactly 2 sentences summarising overall thesis fit>",
+  "red_flag": "<one specific red flag, or null if none>"
+}}"""
+
+
 def _parse_json_response(text: str) -> Optional[dict]:
     """Robustly extract JSON from model response."""
     text = text.strip()
-    # Try direct parse first
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-    # Try to extract JSON block
     match = re.search(r'\{[\s\S]*\}', text)
     if match:
         try:
@@ -119,10 +159,11 @@ def _clamp(v, lo=0, hi=100) -> float:
     return max(lo, min(hi, float(v)))
 
 
-def score_startup(startup_data: dict) -> dict:
+def score_startup(startup_data: dict, thesis_config: Optional[dict] = None) -> dict:
     """
     Score a startup synchronously using Claude API.
     Returns subscores + weighted fit_score + rationale + red_flag.
+    Accepts optional thesis_config dict to override hard-coded defaults.
     """
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -133,7 +174,6 @@ def score_startup(startup_data: dict) -> dict:
     if startup_data.get("chat_history"):
         try:
             history = json.loads(startup_data["chat_history"]) if isinstance(startup_data["chat_history"], str) else startup_data["chat_history"]
-            # Include only user messages as feedback signal (concise)
             user_msgs = [m["content"] for m in history if m.get("role") == "user"][:6]
             if user_msgs:
                 context_parts.append("Analyst chat feedback:\n" + "\n".join(f"- {m}" for m in user_msgs))
@@ -141,7 +181,10 @@ def score_startup(startup_data: dict) -> dict:
             pass
     analyst_context = ("\nANALYST CONTEXT — adjust subscores to reflect this:\n" + "\n".join(context_parts) + "\n") if context_parts else ""
 
-    prompt = SCORING_PROMPT.format(
+    scoring_system = _build_scoring_system(thesis_config)
+    scoring_prompt_template = _build_scoring_prompt(thesis_config)
+
+    prompt = scoring_prompt_template.format(
         name=startup_data.get("name", ""),
         description=startup_data.get("description", "")[:800],
         sector=startup_data.get("sector", ""),
@@ -155,7 +198,7 @@ def score_startup(startup_data: dict) -> dict:
         message = client.messages.create(
             model=MODEL,
             max_tokens=512,
-            system=SCORING_SYSTEM,
+            system=scoring_system,
             messages=[{"role": "user", "content": prompt}],
         )
         raw = message.content[0].text
@@ -194,12 +237,29 @@ def score_startup(startup_data: dict) -> dict:
         }
 
 
-def generate_memo(startup_data: dict) -> dict:
+def generate_memo(startup_data: dict, thesis_config: Optional[dict] = None) -> dict:
     """
     Generate a full DD memo for a startup using Claude API.
     Returns dict with memo section fields.
+    Accepts optional thesis_config dict to override hard-coded defaults.
     """
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+    # Build optional thesis context line for the memo prompt
+    thesis_context = ""
+    if thesis_config:
+        geos = thesis_config.get("geographies")
+        sectors = thesis_config.get("sectors")
+        stages = thesis_config.get("stages")
+        parts = []
+        if geos:
+            parts.append(f"Target geographies: {', '.join(geos)}")
+        if sectors:
+            parts.append(f"Target sectors: {', '.join(sectors)}")
+        if stages:
+            parts.append(f"Target stages: {', '.join(stages)}")
+        if parts:
+            thesis_context = "Investment thesis focus: " + " | ".join(parts) + "\n"
 
     prompt = MEMO_PROMPT.format(
         name=startup_data.get("name", ""),
@@ -211,6 +271,7 @@ def generate_memo(startup_data: dict) -> dict:
         fit_score=startup_data.get("fit_score", "N/A"),
         rationale=startup_data.get("score_rationale", ""),
         red_flag=startup_data.get("red_flag") or "None identified",
+        thesis_context=thesis_context,
     )
 
     try:

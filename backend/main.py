@@ -25,6 +25,16 @@ from auth import get_current_user
 from database import create_db_and_tables, get_session
 from models import RefreshStatus, Startup, StartupRead, UserConfigRead, UserConfigRecord
 from seed_data import SEED_STARTUPS
+
+
+def _parse_thesis(raw: Optional[str]) -> Optional[dict]:
+    """Parse thesis JSON stored in UserConfigRecord.thesis_notes."""
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except Exception:
+        return None
 from sources.hn import fetch_hn_startups
 from sources.github import fetch_github_startups
 from sources.rss import fetch_rss_startups
@@ -430,7 +440,10 @@ def score_one(
     if not startup or startup.user_id != user_id:
         raise HTTPException(status_code=404, detail="Startup not found")
 
-    result = score_startup(startup.__dict__)
+    cfg = session.get(UserConfigRecord, user_id)
+    thesis = _parse_thesis(cfg.thesis_notes if cfg else None)
+
+    result = score_startup(startup.__dict__, thesis_config=thesis)
     startup.fit_score = result.get("fit_score")
     startup.score_rationale = result.get("rationale")
     startup.red_flag = result.get("red_flag")
@@ -448,7 +461,7 @@ def score_one(
         "fit_score": result.get("fit_score"), "score_rationale": result.get("rationale"),
         "red_flag": result.get("red_flag"),
     }
-    memo = generate_memo(startup_dict)
+    memo = generate_memo(startup_dict, thesis_config=thesis)
     for k, v in memo.items():
         setattr(startup, k, v)
 
@@ -468,6 +481,9 @@ def generate_memo_for(
     if not startup or startup.user_id != user_id:
         raise HTTPException(status_code=404, detail="Startup not found")
 
+    cfg = session.get(UserConfigRecord, user_id)
+    thesis = _parse_thesis(cfg.thesis_notes if cfg else None)
+
     startup_dict = {
         "name": startup.name, "description": startup.description,
         "sector": startup.sector, "stage": startup.stage,
@@ -475,7 +491,7 @@ def generate_memo_for(
         "fit_score": startup.fit_score, "score_rationale": startup.score_rationale,
         "red_flag": startup.red_flag,
     }
-    memo = generate_memo(startup_dict)
+    memo = generate_memo(startup_dict, thesis_config=thesis)
     for k, v in memo.items():
         setattr(startup, k, v)
 
@@ -548,13 +564,28 @@ def chat_with_startup(
     if not startup or startup.user_id != user_id:
         raise HTTPException(status_code=404, detail="Startup not found")
 
+    cfg = session.get(UserConfigRecord, user_id)
+    thesis = _parse_thesis(cfg.thesis_notes if cfg else None)
+
     import anthropic as _anthropic
     client = _anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
+    thesis_line = ""
+    if thesis:
+        parts = []
+        if thesis.get("geographies"):
+            parts.append(f"target geographies: {', '.join(thesis['geographies'])}")
+        if thesis.get("sectors"):
+            parts.append(f"target sectors: {', '.join(thesis['sectors'])}")
+        if thesis.get("stages"):
+            parts.append(f"target stages: {', '.join(thesis['stages'])}")
+        if parts:
+            thesis_line = f"\nInvestment thesis: {' | '.join(parts)}."
+
     system = f"""You are an AI research assistant helping a VC analyst evaluate a startup. \
 Answer in 2-3 sentences max, plain text only — no Markdown, headers, bullets, or tables. \
-Be direct and analytical. Base your answers on the information below; acknowledge when something is unknown.
+Be direct and analytical. Base your answers on the information below; acknowledge when something is unknown.{thesis_line}
 
 Startup: {startup.name}
 Description: {startup.description}
@@ -568,7 +599,7 @@ Problem: {startup.memo_problem or 'N/A'}
 Solution: {startup.memo_solution or 'N/A'}
 Team: {startup.memo_team or 'N/A'}
 Traction: {startup.memo_traction or 'N/A'}
-Elaia Fit: {startup.memo_elaia_fit or 'N/A'}
+Thesis Fit: {startup.memo_elaia_fit or 'N/A'}
 Risks: {startup.memo_red_flags or 'N/A'}"""
 
     messages = [{"role": m.role, "content": m.content} for m in req.history]
@@ -690,6 +721,10 @@ async def score_all_unscored(
     if not batch:
         return {"scored": 0, "message": "No unscored startups."}
 
+    cfg = session.get(UserConfigRecord, user_id)
+    thesis = _parse_thesis(cfg.thesis_notes if cfg else None)
+
+    import functools
     loop = asyncio.get_running_loop()
     startup_dicts = [
         {"name": s.name, "description": s.description, "sector": s.sector,
@@ -697,7 +732,7 @@ async def score_all_unscored(
         for s in batch
     ]
     results = await asyncio.gather(
-        *[loop.run_in_executor(None, score_startup, d) for d in startup_dicts]
+        *[loop.run_in_executor(None, functools.partial(score_startup, thesis_config=thesis), d) for d in startup_dicts]
     )
     for startup, result in zip(batch, results):
         startup.fit_score = result.get("fit_score")

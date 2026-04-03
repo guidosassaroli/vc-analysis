@@ -9,15 +9,80 @@ const XIcon = () => (
   </svg>
 )
 
+const ALL_GEOGRAPHIES = [
+  'France', 'Germany', 'Spain', 'Israel',
+  'United Kingdom', 'Sweden', 'Netherlands', 'Switzerland', 'Finland', 'Denmark',
+]
+
+const ALL_SECTORS = [
+  'AI/ML', 'Biotech', 'Quantum', 'Cybersecurity',
+  'Climate Tech', 'Semiconductors', 'Fintech', 'Industrial Robotics', 'Software',
+]
+
+const ALL_STAGES = ['Pre-Seed', 'Seed', 'Series A', 'Series B']
+
+const DEFAULT_THESIS = {
+  geographies: ['France', 'Germany', 'Spain', 'Israel'],
+  sectors: ['AI/ML', 'Biotech', 'Quantum', 'Cybersecurity', 'Climate Tech', 'Semiconductors', 'Fintech', 'Industrial Robotics'],
+  stages: ['Pre-Seed', 'Seed', 'Series A'],
+  team_signal: 'Academic/PhD founders, university spinoffs, CNRS/INRIA/Pasteur/Fraunhofer/Weizmann/Unit 8200 backgrounds, prior exits',
+  tech_signal: 'Proprietary research, patents, novel algorithms, hardware IP, deep tech defensibility',
+  exclusions: 'Pure SaaS with no deep tech differentiation, US-only focused companies, B2C consumer apps, commodity tech with no IP protection',
+}
+
+function parseThesis(raw) {
+  if (!raw) return { ...DEFAULT_THESIS }
+  try {
+    const parsed = JSON.parse(raw)
+    // Merge with defaults so missing keys are filled in
+    return { ...DEFAULT_THESIS, ...parsed }
+  } catch {
+    return { ...DEFAULT_THESIS }
+  }
+}
+
+function CheckboxGroup({ label, options, selected, onChange }) {
+  const toggle = (item) => {
+    const next = selected.includes(item)
+      ? selected.filter(x => x !== item)
+      : [...selected, item]
+    onChange(next)
+  }
+
+  return (
+    <div>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map(opt => {
+          const active = selected.includes(opt)
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => toggle(opt)}
+              className={`px-2.5 py-1 rounded-md text-[12px] font-medium border transition-colors ${
+                active
+                  ? 'bg-brand-accent/10 border-brand-accent/30 text-brand-accent'
+                  : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'
+              }`}
+            >
+              {opt}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function SettingsModal({ onClose }) {
   const { session } = useAuth()
-  const [thesisNotes, setThesisNotes] = useState('')
+  const [thesis, setThesis] = useState(DEFAULT_THESIS)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const overlayRef = useRef(null)
   const firstFocusRef = useRef(null)
 
-  // Focus trap
   useEffect(() => {
     firstFocusRef.current?.focus()
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
@@ -25,17 +90,18 @@ export default function SettingsModal({ onClose }) {
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  // Load config on open
   useEffect(() => {
     getConfig().then(cfg => {
-      if (cfg?.thesis_notes) setThesisNotes(cfg.thesis_notes)
+      setThesis(parseThesis(cfg?.thesis_notes))
     }).catch(() => {})
   }, [])
+
+  const set = (key, value) => setThesis(prev => ({ ...prev, [key]: value }))
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      await saveConfig({ thesis_notes: thesisNotes })
+      await saveConfig({ thesis_notes: JSON.stringify(thesis) })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
@@ -63,10 +129,13 @@ export default function SettingsModal({ onClose }) {
       aria-modal="true"
       aria-label="Settings"
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-900">Settings</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+          <div>
+            <h2 className="font-semibold text-slate-900">Investment Thesis</h2>
+            <p className="text-xs text-slate-400 mt-0.5">These settings shape every AI score and memo.</p>
+          </div>
           <button
             ref={firstFocusRef}
             onClick={onClose}
@@ -77,16 +146,15 @@ export default function SettingsModal({ onClose }) {
           </button>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-5 space-y-6">
+        {/* Body — scrollable */}
+        <div className="px-6 py-5 space-y-6 overflow-y-auto">
+
           {/* Account */}
           <div>
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Account</h3>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Account</p>
             <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
               <div>
-                <p className="text-sm font-medium text-slate-900">
-                  {session?.user?.email ?? 'dev@local'}
-                </p>
+                <p className="text-sm font-medium text-slate-900">{session?.user?.email ?? 'dev@local'}</p>
                 <p className="text-xs text-slate-500 mt-0.5">Signed in</p>
               </div>
               {supabase && (
@@ -100,36 +168,88 @@ export default function SettingsModal({ onClose }) {
             </div>
           </div>
 
-          {/* Thesis notes */}
+          {/* Geographies */}
+          <CheckboxGroup
+            label="Focus Geographies"
+            options={ALL_GEOGRAPHIES}
+            selected={thesis.geographies}
+            onChange={v => set('geographies', v)}
+          />
+
+          {/* Sectors */}
+          <CheckboxGroup
+            label="Target Sectors"
+            options={ALL_SECTORS}
+            selected={thesis.sectors}
+            onChange={v => set('sectors', v)}
+          />
+
+          {/* Stages */}
+          <CheckboxGroup
+            label="Investment Stages"
+            options={ALL_STAGES}
+            selected={thesis.stages}
+            onChange={v => set('stages', v)}
+          />
+
+          {/* Team signal */}
           <div>
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-              Custom Thesis Notes
-            </h3>
-            <p className="text-xs text-slate-400 mb-3">
-              These notes are appended to every AI scoring prompt — use them to refine what the model prioritises for your portfolio.
-            </p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Team Signal</p>
+            <p className="text-xs text-slate-400 mb-2">What makes a strong founding team for your fund?</p>
             <textarea
-              value={thesisNotes}
-              onChange={e => setThesisNotes(e.target.value)}
-              rows={5}
-              placeholder="e.g. We only invest in companies with at least one technical founder with a PhD. We are particularly interested in quantum hardware and defence-grade cybersecurity."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy/30 focus:border-brand-navy transition-colors resize-none"
+              value={thesis.team_signal}
+              onChange={e => set('team_signal', e.target.value)}
+              rows={2}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-colors resize-none"
+            />
+          </div>
+
+          {/* Tech signal */}
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Technology Signal</p>
+            <p className="text-xs text-slate-400 mb-2">What counts as a strong technical moat?</p>
+            <textarea
+              value={thesis.tech_signal}
+              onChange={e => set('tech_signal', e.target.value)}
+              rows={2}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-colors resize-none"
+            />
+          </div>
+
+          {/* Exclusions */}
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Exclusions / Weak Fit</p>
+            <p className="text-xs text-slate-400 mb-2">What should the AI penalise or avoid?</p>
+            <textarea
+              value={thesis.exclusions}
+              onChange={e => set('exclusions', e.target.value)}
+              rows={2}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/30 focus:border-brand-accent transition-colors resize-none"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2">
-          <button onClick={onClose} className="btn bg-slate-100 hover:bg-slate-200 text-slate-700">
-            Cancel
-          </button>
+        <div className="px-6 py-4 border-t border-slate-100 flex justify-between items-center shrink-0">
           <button
-            onClick={handleSave}
-            disabled={saving}
-            className="btn-primary disabled:opacity-50"
+            type="button"
+            onClick={() => setThesis({ ...DEFAULT_THESIS })}
+            className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
           >
-            {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
+            Reset to defaults
           </button>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="btn bg-slate-100 hover:bg-slate-200 text-slate-700">
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="btn-primary disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
