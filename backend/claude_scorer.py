@@ -112,11 +112,11 @@ Country: {country}
 Founders: {founders}
 {analyst_context}
 Score each dimension 0–100 against the thesis criteria:
-- team (25%%): """ + team_signal + """ — penalize weak or unknown teams
-- technology (25%%): """ + tech_signal + """ — penalize commodity SaaS
-- market (20%%): TAM size, timing, growth signal, B2B vs B2C (B2C penalized)
-- geography (15%%): """ + strong_geos + """ = strong fit; other EU = moderate; outside target = weak
-- stage (15%%): """ + strong_stages + """ = strong; later stages = progressively weaker
+- team (25%): """ + team_signal + """ — penalize weak or unknown teams
+- technology (25%): """ + tech_signal + """ — penalize commodity SaaS
+- market (20%): TAM size, timing, growth signal, B2B vs B2C (B2C penalized)
+- geography (15%): """ + strong_geos + """ = strong fit; other EU = moderate; outside target = weak
+- stage (15%): """ + strong_stages + """ = strong; later stages = progressively weaker
 
 Respond with JSON in exactly this format:
 {{

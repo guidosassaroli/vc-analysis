@@ -54,9 +54,7 @@ class Startup(SQLModel, table=True):
 
 
 class UserConfigRecord(SQLModel, table=True):
-    user_id: str = Field(
-        sa_column=Column(Uuid(as_uuid=False, native_uuid=True), primary_key=True),
-    )
+    user_id: str = Field(primary_key=True)
     thesis_notes: Optional[str] = None   # injected into scoring prompts
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
