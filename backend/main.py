@@ -1,5 +1,5 @@
 """
-Elaia VC Deal Flow Intelligence — FastAPI Backend
+VC Deal Flow Intelligence — FastAPI Backend
 """
 
 import asyncio
@@ -31,8 +31,8 @@ from sources.rss import fetch_rss_startups
 from claude_scorer import score_startup, generate_memo
 
 app = FastAPI(
-    title="Elaia Deal Flow API",
-    description="VC Deal Flow Intelligence Dashboard for Elaia",
+    title="VC Deal Flow API",
+    description="VC Deal Flow Intelligence Dashboard",
     version="1.0.0",
 )
 
@@ -552,7 +552,7 @@ def chat_with_startup(
     client = _anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
-    system = f"""You are an AI research assistant helping a VC analyst at Elaia Partners evaluate a startup. \
+    system = f"""You are an AI research assistant helping a VC analyst evaluate a startup. \
 Answer in 2-3 sentences max, plain text only — no Markdown, headers, bullets, or tables. \
 Be direct and analytical. Base your answers on the information below; acknowledge when something is unknown.
 
@@ -781,7 +781,7 @@ def export_pdf(
     pdf.set_text_color(255, 255, 255)
     pdf.rect(0, 0, 210, 40, "F")
     pdf.set_xy(10, 8)
-    pdf.cell(0, 10, "Elaia", ln=False)
+    pdf.cell(0, 10, "Deal Flow Intelligence", ln=False)
     pdf.set_font("Helvetica", "", 11)
     pdf.set_xy(10, 20)
     pdf.cell(0, 8, "Deal Flow Intelligence — Top 10 Opportunities")
@@ -838,14 +838,14 @@ def export_pdf(
             next_y = pdf.get_y()
             pdf.set_xy(14, next_y + 1)
             rationale = s.score_rationale[:160] + "..." if len(s.score_rationale) > 160 else s.score_rationale
-            pdf.multi_cell(162, 4, f"Elaia Fit: {rationale}")
+            pdf.multi_cell(162, 4, f"Thesis Fit: {rationale}")
 
         pdf.set_y(card_y + 52)
 
     pdf.set_y(-20)
     pdf.set_text_color(148, 163, 184)
     pdf.set_font("Helvetica", "I", 8)
-    pdf.cell(0, 5, "Confidential — Elaia Internal Use Only", align="C")
+    pdf.cell(0, 5, "Confidential — Internal Use Only", align="C")
 
     pdf_bytes = pdf.output()
 

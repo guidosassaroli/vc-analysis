@@ -1,4 +1,4 @@
-"""15 realistic deep tech European seed startups for Elaia's thesis."""
+"""15 realistic deep tech European seed startups."""
 
 SEED_STARTUPS = [
     # {
@@ -23,7 +23,7 @@ SEED_STARTUPS = [
             "logistics, and retail. An ETH Zurich spinout building frontier foundation models for "
             "robotic manipulation — robots learn new tasks from short human demonstrations (<1h) "
             "and adapt autonomously to unstructured environments. Cuts customer operating costs "
-            "by up to 70%. Backed by Elaia and SpeedInvest in a $16M seed round."
+            "by up to 70%. Backed by SpeedInvest in a $16M seed round."
         ),
         "sector": "Industrial Robotics",
         "stage": "Seed",

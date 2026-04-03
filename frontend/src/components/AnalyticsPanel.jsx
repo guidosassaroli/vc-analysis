@@ -60,11 +60,11 @@ const TrendingUpIcon = () => (
 
 const STAT_ITEMS = [
   { key: 'total',     label: 'Total Startups', Icon: BuildingIcon,   color: 'text-slate-700' },
-  { key: 'scored',    label: 'Scored',          Icon: SparklesIcon,   color: 'text-elaia-navy' },
+  { key: 'scored',    label: 'Scored',          Icon: SparklesIcon,   color: 'text-brand-navy' },
   { key: 'high_fit',  label: 'High Fit (≥70)',  Icon: CheckBadgeIcon, color: 'text-emerald-600' },
   { key: 'sectors',   label: 'Sectors',         Icon: SquaresIcon,    color: 'text-violet-600' },
   { key: 'countries', label: 'Countries',       Icon: GlobeIcon,      color: 'text-amber-600' },
-  { key: 'avg_score', label: 'Avg Score',       Icon: TrendingUpIcon, color: 'text-elaia-navy', suffix: '/100' },
+  { key: 'avg_score', label: 'Avg Score',       Icon: TrendingUpIcon, color: 'text-brand-navy', suffix: '/100' },
 ]
 
 const SCORE_BUCKETS = [
@@ -122,7 +122,7 @@ export default function AnalyticsPanel({ startups, stats }) {
         aria-controls="analytics-panel"
         className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors group"
       >
-        <span className="group-hover:text-elaia-navy"><ChartBarIcon /></span>
+        <span className="group-hover:text-brand-navy"><ChartBarIcon /></span>
         Analytics
         <ChevronIcon open={open} />
         {!open && stats && (

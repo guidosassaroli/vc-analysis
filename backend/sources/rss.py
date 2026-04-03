@@ -122,7 +122,7 @@ async def fetch_rss_startups(existing_urls: set = None) -> list[dict]:
     existing_urls = existing_urls or set()
     results = []
 
-    headers = {"User-Agent": "Mozilla/5.0 (compatible; ElaiaBot/1.0)"}
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; DealFlowBot/1.0)"}
     async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
         feed_results = await asyncio.gather(*[_fetch_feed(url, client) for url in RSS_FEEDS])
 

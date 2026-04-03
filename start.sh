@@ -11,7 +11,7 @@ if [ ! -f "$ROOT/.env" ]; then
   exit 1
 fi
 
-echo "🚀 Starting Elaia Deal Flow Intelligence..."
+echo "🚀 Starting VC Deal Flow Intelligence..."
 echo ""
 
 # Start backend

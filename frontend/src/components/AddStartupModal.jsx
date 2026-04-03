@@ -78,7 +78,7 @@ export default function AddStartupModal({ onClose, onAdded }) {
               value={url}
               onChange={(e) => { setUrl(e.target.value); setError(null) }}
               placeholder="https://…"
-              className="w-full bg-white border border-slate-200 text-slate-800 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-elaia-accent focus:border-transparent hover:border-slate-300 transition-colors"
+              className="w-full bg-white border border-slate-200 text-slate-800 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-transparent hover:border-slate-300 transition-colors"
               disabled={loading}
             />
           </div>
@@ -92,7 +92,7 @@ export default function AddStartupModal({ onClose, onAdded }) {
           <div className="flex justify-end">
             {loading ? (
               <div className="flex items-center gap-2 text-sm text-slate-500 py-2 px-4">
-                <span className="w-4 h-4 border-2 border-slate-300 border-t-elaia-accent rounded-full animate-spin" aria-hidden="true" />
+                <span className="w-4 h-4 border-2 border-slate-300 border-t-brand-accent rounded-full animate-spin" aria-hidden="true" />
                 Fetching…
               </div>
             ) : (

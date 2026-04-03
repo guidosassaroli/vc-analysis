@@ -41,11 +41,11 @@ const TrendingUpIcon = () => (
 
 const STAT_ITEMS = [
   { key: 'total',     label: 'Total Startups', Icon: BuildingIcon,   color: 'text-slate-700' },
-  { key: 'scored',    label: 'Scored by AI',   Icon: SparklesIcon,   color: 'text-elaia-navy' },
+  { key: 'scored',    label: 'Scored by AI',   Icon: SparklesIcon,   color: 'text-brand-navy' },
   { key: 'high_fit',  label: 'High Fit (≥70)', Icon: CheckBadgeIcon, color: 'text-emerald-600' },
   { key: 'sectors',   label: 'Sectors',         Icon: SquaresIcon,    color: 'text-violet-600' },
   { key: 'countries', label: 'Countries',       Icon: GlobeIcon,      color: 'text-amber-600' },
-  { key: 'avg_score', label: 'Avg Fit Score',   Icon: TrendingUpIcon, color: 'text-elaia-navy', suffix: '/100' },
+  { key: 'avg_score', label: 'Avg Fit Score',   Icon: TrendingUpIcon, color: 'text-brand-navy', suffix: '/100' },
 ]
 
 // ─── Component ────────────────────────────────────────────────────────────────

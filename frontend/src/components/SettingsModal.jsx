@@ -113,7 +113,7 @@ export default function SettingsModal({ onClose }) {
               onChange={e => setThesisNotes(e.target.value)}
               rows={5}
               placeholder="e.g. We only invest in companies with at least one technical founder with a PhD. We are particularly interested in quantum hardware and defence-grade cybersecurity."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-elaia-navy/30 focus:border-elaia-navy transition-colors resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy/30 focus:border-brand-navy transition-colors resize-none"
             />
           </div>
         </div>

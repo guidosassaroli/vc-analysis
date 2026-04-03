@@ -75,7 +75,7 @@ const PencilIcon = () => (
 const SUGGESTED_QUESTIONS = [
   'Who are the main competitors?',
   'What is the exit potential?',
-  'How does this fit Elaia\'s thesis?',
+  'How does this fit our investment thesis?',
   'What questions should we ask the founders?',
 ]
 
@@ -86,7 +86,7 @@ const MEMO_SECTIONS = [
   { key: 'memo_solution',  label: 'Solution',          Icon: LightBulbIcon },
   { key: 'memo_team',      label: 'Team Assessment',   Icon: UserGroupIcon },
   { key: 'memo_traction',  label: 'Traction & Market', Icon: TrendingUpIcon },
-  { key: 'memo_elaia_fit', label: 'Elaia Fit',         Icon: CheckCircleIcon },
+  { key: 'memo_elaia_fit', label: 'Thesis Fit',         Icon: CheckCircleIcon },
   { key: 'memo_red_flags', label: 'Red Flags & Risks', Icon: ExclamationTriangleIcon, redFlags: true },
 ]
 
@@ -341,7 +341,7 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
         onClick={e => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="bg-elaia-navy px-6 py-5 flex items-start justify-between gap-4 shrink-0">
+        <div className="bg-brand-navy px-6 py-5 flex items-start justify-between gap-4 shrink-0">
           <div className="flex items-start gap-5 min-w-0">
             <ScoreRing score={startup.fit_score} />
             <div className="text-white pt-1 min-w-0">
@@ -418,7 +418,7 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
             <p className="text-sm text-slate-600 leading-relaxed break-words">{startup.description}</p>
             {startup.website && (
               <a href={startup.website} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-elaia-navy text-xs mt-2 hover:underline break-all">
+                className="inline-flex items-center gap-1 text-brand-navy text-xs mt-2 hover:underline break-all">
                 {startup.website} ↗
               </a>
             )}
@@ -426,7 +426,7 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
 
           {startup.score_rationale && (
             <div className="bg-teal-50 border border-teal-100 rounded-xl p-4 mb-5">
-              <div className="text-xs font-semibold text-elaia-navy uppercase tracking-wide mb-2">
+              <div className="text-xs font-semibold text-brand-navy uppercase tracking-wide mb-2">
                 AI Scoring Rationale
               </div>
               <p className="text-sm text-teal-900 leading-relaxed">{startup.score_rationale}</p>
@@ -441,7 +441,7 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
 
           {SUBSCORES.some(s => startup[s.key] != null) && (
             <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-5">
-              <div className="text-xs font-semibold text-elaia-navy uppercase tracking-wide mb-3">
+              <div className="text-xs font-semibold text-brand-navy uppercase tracking-wide mb-3">
                 Score Breakdown
               </div>
               <div className="space-y-2.5">
@@ -461,7 +461,7 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
                 <button
                   onClick={handleGenerateMemo}
                   disabled={generating}
-                  className="btn-ghost text-xs text-elaia-navy"
+                  className="btn-ghost text-xs text-brand-navy"
                 >
                   {generating ? 'Regenerating…' : '↺ Regenerate'}
                 </button>
@@ -524,7 +524,7 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
 
           {/* ── Chat panel ── */}
           <div className="mt-6 border border-slate-200 rounded-xl overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 bg-elaia-navy">
+            <div className="flex items-center gap-2 px-4 py-3 bg-brand-navy">
               <span className="text-white/80"><ChatIcon /></span>
               <span className="text-sm font-semibold text-white">Ask Odiug about {startup.name}</span>
             </div>
@@ -539,7 +539,7 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
                       <button
                         key={q}
                         onClick={() => handleChatSend(q)}
-                        className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-elaia-navy hover:text-white transition-colors ring-1 ring-slate-200"
+                        className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-brand-navy hover:text-white transition-colors ring-1 ring-slate-200"
                       >
                         {q}
                       </button>
@@ -551,7 +551,7 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                     m.role === 'user'
-                      ? 'bg-elaia-navy text-white rounded-tr-sm'
+                      ? 'bg-brand-navy text-white rounded-tr-sm'
                       : 'bg-slate-100 text-slate-700 rounded-tl-sm'
                   }`}>
                     {m.content}
@@ -584,13 +584,13 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
                 placeholder="Ask anything about this startup…"
                 disabled={chatSending}
                 className="flex-1 resize-none bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800
-                  placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-elaia-accent focus:border-transparent
+                  placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-transparent
                   disabled:opacity-50"
               />
               <button
                 onClick={() => handleChatSend()}
                 disabled={!chatInput.trim() || chatSending}
-                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-elaia-navy text-white
+                className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-brand-navy text-white
                   hover:opacity-90 disabled:opacity-40 transition-opacity"
                 aria-label="Send message"
               >

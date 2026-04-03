@@ -1,6 +1,6 @@
 # Deal Flow Intelligence Dashboard
 
-A full-stack VC deal flow intelligence tool built for Elaia Partners. Fetches startups from public sources, scores them against Elaia's investment thesis using a multi-dimensional AI scoring engine, and generates structured due diligence memos — with multi-user auth, analyst memory, pipeline tracking, and interactive AI-powered research.
+A full-stack VC deal flow intelligence tool. Fetches startups from public sources, scores them against a configurable investment thesis using a multi-dimensional AI scoring engine, and generates structured due diligence memos — with multi-user auth, analyst memory, pipeline tracking, and interactive AI-powered research.
 
 Built by [Guido Sassaroli](https://www.linkedin.com/in/guido-sassaroli-778548169/).
 
@@ -143,8 +143,7 @@ DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supaba
 3. Click **Score All** to score all seeded startups (~10–20 seconds)
 4. Click **View Memo** on any scored card to open the full DD memo
 5. Use **Add Startup** to add any company by URL
-6. Use **Fetch Sources** to pull new startups from HackerNews, GitHub, and EU news
-7. Use **Export PDF** to download the top 10 opportunities as a branded report
+6. Use **Export PDF** to download the top 10 opportunities as a report
 
 ---
 
@@ -177,7 +176,7 @@ The `fit_score` is computed deterministically in Python as a weighted average �
 
 ### DD Memos
 
-Structured 6-section due diligence memos: Problem · Solution · Team Assessment · Traction & Market · Elaia Fit · Red Flags. Regenerable at any time.
+Structured 6-section due diligence memos: Problem · Solution · Team Assessment · Traction & Market · Thesis Fit · Red Flags. Regenerable at any time.
 
 ### Deal Pipeline
 
@@ -211,7 +210,7 @@ Fetches concurrently from HackerNews ("Show HN"), GitHub Search (5 sector querie
 
 - **Full-text search** — across name, description, founders, sector, country
 - **Filters** — sector, stage, country, source, minimum fit score
-- **PDF export** — Elaia-branded top 10 report (downloadable from header)
+- **PDF export** — top 10 report (downloadable from header)
 - **Score caching** — AI is only called once per startup (or on explicit re-score)
 - **Cloud persistence** — Supabase PostgreSQL with automatic column migrations on startup
 
@@ -276,7 +275,7 @@ All endpoints require a valid `Authorization: Bearer <token>` header when `SUPAB
 
 ---
 
-## Scoring Thesis (Elaia)
+## Default Scoring Thesis
 
 **Strong fit signals:**
 - Geography: France, Spain, Israel, Germany
@@ -289,6 +288,8 @@ All endpoints require a valid `Authorization: Bearer <token>` header when `SUPAB
 - US-only market focus
 - Late stage (Series B+)
 - B2C consumer applications
+
+The thesis is customizable per-user via the Settings modal (thesis notes are injected into every scoring prompt).
 
 ---
 

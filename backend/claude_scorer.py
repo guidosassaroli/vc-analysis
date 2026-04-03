@@ -13,9 +13,9 @@ import anthropic
 
 MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
-SCORING_SYSTEM = """You are a senior investment analyst at Elaia, a French deep tech venture capital firm with €850M AUM, investing across Paris, Barcelona, and Tel Aviv.
+SCORING_SYSTEM = """You are a senior investment analyst at a European deep tech venture capital firm investing across Paris, Barcelona, and Tel Aviv.
 
-Elaia's investment thesis:
+Investment thesis:
 STRONG FIT indicators:
 - Geography: France, Spain, Israel, Germany (European deep tech ecosystem)
 - Sectors: AI/ML infrastructure, Quantum Computing, Biotech/Drug Discovery, Cybersecurity, Climate Tech, Semiconductors, Industrial Robotics, Fintech Infrastructure
@@ -32,7 +32,7 @@ WEAK FIT indicators:
 
 Always respond with valid JSON only. No markdown, no explanation outside the JSON."""
 
-SCORING_PROMPT = """Analyze this startup against Elaia's investment thesis by scoring 5 dimensions independently.
+SCORING_PROMPT = """Analyze this startup against the investment thesis by scoring 5 dimensions independently.
 
 Startup:
 Name: {name}
@@ -42,7 +42,7 @@ Stage: {stage}
 Country: {country}
 Founders: {founders}
 {analyst_context}
-Score each dimension 0–100 against Elaia's thesis criteria:
+Score each dimension 0–100 against the thesis criteria:
 - team (25%): academic pedigree, domain expertise, PhD/spinoff background, Unit 8200 / CNRS / INRIA / Fraunhofer / Weizmann credentials, prior exits
 - technology (25%): proprietary research, patents, novel algorithms, hardware IP, deep tech defensibility — penalize commodity SaaS
 - market (20%): TAM size, timing, growth signal, B2B vs B2C (B2C penalized)
@@ -60,11 +60,11 @@ Respond with JSON in exactly this format:
   "red_flag": "<one specific red flag, or null if none>"
 }}"""
 
-MEMO_SYSTEM = """You are a senior investment analyst at Elaia writing internal due diligence memos.
+MEMO_SYSTEM = """You are a senior investment analyst writing internal due diligence memos.
 Write concise, analytical, and insightful content. Be direct and honest about both opportunities and risks.
 Each section must be exactly 1-2 sentences — no more. Always respond with valid JSON only."""
 
-MEMO_PROMPT = """Write a due diligence memo for this startup being considered by Elaia.
+MEMO_PROMPT = """Write a due diligence memo for this startup.
 
 Startup:
 Name: {name}
@@ -83,7 +83,7 @@ Write a structured memo in this JSON format. Each value must be 1-2 sentences on
   "solution": "<technical approach and unique value proposition — 1-2 sentences>",
   "team": "<founding team credentials, experience, and gaps — 1-2 sentences>",
   "traction": "<current traction, customers, revenue, market validation — 1-2 sentences>",
-  "elaia_fit": "<alignment with Elaia's thesis and why Elaia is the right investor — 1-2 sentences>",
+  "elaia_fit": "<alignment with the investment thesis and why we are the right investor — 1-2 sentences>",
   "red_flags": "<top 2 risks or open diligence questions — 1-2 sentences>"
 }}"""
 

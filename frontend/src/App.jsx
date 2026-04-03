@@ -215,7 +215,7 @@ function Dashboard() {
                 href="https://www.linkedin.com/in/guido-sassaroli-778548169/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-slate-500 hover:text-elaia-navy underline underline-offset-2 transition-colors"
+                className="text-slate-500 hover:text-brand-navy underline underline-offset-2 transition-colors"
               >
                 Guido Sassaroli
               </a>
@@ -258,7 +258,7 @@ function ProtectedRoute({ children }) {
     // Still loading auth state
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-slate-200 border-t-elaia-navy rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-slate-200 border-t-brand-navy rounded-full animate-spin" />
       </div>
     )
   }

@@ -36,7 +36,7 @@ const FilterSelect = ({ id, label, value, onChange, options }) => (
       id={id}
       value={value}
       onChange={e => onChange(e.target.value)}
-      className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-elaia-accent focus:border-transparent cursor-pointer hover:border-slate-300 transition-colors min-w-[130px]"
+      className="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-transparent cursor-pointer hover:border-slate-300 transition-colors min-w-[130px]"
     >
       {options.map(opt => (
         <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>
@@ -90,7 +90,7 @@ export default function FilterBar({ filters, onChange, totalShown, totalAll }) {
               placeholder="Search by name, description, or founder…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-elaia-accent focus:border-transparent hover:border-slate-300 transition-colors"
+              className="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-transparent hover:border-slate-300 transition-colors"
             />
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function FilterBar({ filters, onChange, totalShown, totalAll }) {
         {/* Min score slider */}
         <div className="flex flex-col gap-1">
           <label htmlFor="min-score-slider" className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-            Min Score: <span className="text-elaia-navy">{filters.min_score || 0}</span>
+            Min Score: <span className="text-brand-navy">{filters.min_score || 0}</span>
           </label>
           <input
             id="min-score-slider"
@@ -140,7 +140,7 @@ export default function FilterBar({ filters, onChange, totalShown, totalAll }) {
             step="10"
             value={filters.min_score || 0}
             onChange={e => onChange({ ...filters, min_score: Number(e.target.value) })}
-            className="w-32 accent-elaia-accent cursor-pointer"
+            className="w-32 accent-brand-accent cursor-pointer"
             aria-label={`Minimum fit score: ${filters.min_score || 0} out of 100`}
           />
         </div>
@@ -155,7 +155,7 @@ export default function FilterBar({ filters, onChange, totalShown, totalAll }) {
           {activeFilterCount > 0 && (
             <button
               onClick={handleReset}
-              className="btn-ghost text-sm pb-2 text-elaia-navy hover:text-elaia-dark"
+              className="btn-ghost text-sm pb-2 text-brand-navy hover:text-brand-dark"
             >
               Clear filters ({activeFilterCount})
             </button>

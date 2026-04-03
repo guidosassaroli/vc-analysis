@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        elaia: {
+        brand: {
           navy:   '#0e847f',
           dark:   '#0a6b66',
           mid:    '#0d726d',

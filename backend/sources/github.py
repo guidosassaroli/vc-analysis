@@ -1,11 +1,11 @@
-"""GitHub Search API — find early-stage deep tech repos matching Elaia sectors."""
+"""GitHub Search API — find early-stage deep tech repos."""
 
 import os
 import httpx
 
 GITHUB_API = "https://api.github.com/search/repositories"
 
-# One broad query per Elaia sector cluster; cap 5 results each → max 25 total
+# One broad query per sector cluster; cap 5 results each → max 25 total
 SECTOR_QUERIES = [
     ("AI/ML",              "topic:machine-learning stars:>10 created:>2023-01-01"),
     ("Biotech",            "topic:bioinformatics stars:>10 created:>2023-01-01"),

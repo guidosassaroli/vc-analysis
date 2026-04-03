@@ -3,7 +3,7 @@ import { scoreAll, exportPdf, clearAll } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
-const ElaiaLogo = () => (
+const Logo = () => (
   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     {/* Three ascending diagonal bars */}
     <polygon points="4,28 8,28 10,20 6,20" fill="white" />
@@ -119,11 +119,11 @@ export default function Header({ onScoreAll, onCleared, onAdd, onOpenSettings })
 
   return (
     <>
-      <header className="bg-elaia-navy border-b border-white/10 sticky top-0 z-40">
+      <header className="bg-brand-navy border-b border-white/10 sticky top-0 z-40">
         <div className="max-w-screen-2xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           {/* Brand */}
           <div className="flex items-center gap-3 shrink-0">
-            <ElaiaLogo />
+            <Logo />
             <div>
               <div className="text-white font-bold text-lg leading-none tracking-tight">
                 Deal Flow Intelligence
@@ -190,7 +190,7 @@ export default function Header({ onScoreAll, onCleared, onAdd, onOpenSettings })
             <button
               onClick={handleScoreAll}
               disabled={scoring}
-              className="btn bg-white text-elaia-navy hover:bg-white/90 disabled:opacity-50"
+              className="btn bg-white text-brand-navy hover:bg-white/90 disabled:opacity-50"
             >
               <BoltIcon />
               <span className="hidden sm:inline">
@@ -226,7 +226,7 @@ export default function Header({ onScoreAll, onCleared, onAdd, onOpenSettings })
           className={`fixed bottom-6 right-6 z-50 animate-slide-up flex items-start gap-3 px-5 py-4 rounded-xl shadow-xl max-w-sm text-sm font-medium ${
             toast.type === 'error'
               ? 'bg-red-600 text-white'
-              : 'bg-elaia-navy text-white'
+              : 'bg-brand-navy text-white'
           }`}
         >
           <span aria-hidden="true">{toast.type === 'error' ? '⚠️' : '✓'}</span>
