@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { refreshFeed, scoreAll, exportPdf, clearAll } from '../api'
+import { scoreAll, exportPdf, clearAll } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
@@ -14,16 +14,6 @@ const ElaiaLogo = () => (
   </svg>
 )
 
-const RefreshIcon = ({ spinning }) => (
-  <svg
-    className={`w-4 h-4 ${spinning ? 'animate-spin' : ''}`}
-    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-    aria-hidden="true"
-  >
-    <path strokeLinecap="round" strokeLinejoin="round"
-      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-  </svg>
-)
 
 const DownloadIcon = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -57,10 +47,9 @@ const GearIcon = () => (
   </svg>
 )
 
-export default function Header({ onRefresh, onScoreAll, onCleared, onAdd, onOpenSettings }) {
+export default function Header({ onScoreAll, onCleared, onAdd, onOpenSettings }) {
   const { session } = useAuth()
   const userEmail = session?.user?.email
-  const [refreshing, setRefreshing] = useState(false)
   const [scoring, setScoring] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [clearing, setClearing] = useState(false)
@@ -76,19 +65,6 @@ export default function Header({ onRefresh, onScoreAll, onCleared, onAdd, onOpen
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 4000)
-  }
-
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    try {
-      const result = await refreshFeed()
-      showToast(`${result.message}`)
-      onRefresh?.()
-    } catch (e) {
-      showToast('Could not fetch new startups — check your connection.', 'error')
-    } finally {
-      setRefreshing(false)
-    }
   }
 
   const handleScoreAll = async () => {
@@ -208,18 +184,6 @@ export default function Header({ onRefresh, onScoreAll, onCleared, onAdd, onOpen
               }
               <span className="hidden sm:inline">
                 {clearing ? 'Clearing…' : confirmingClear ? 'Confirm?' : 'Clear All'}
-              </span>
-            </button>
-
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="btn bg-white/10 hover:bg-white/20 text-white border border-white/20 disabled:opacity-50"
-              title="Fetch new startups from HackerNews, GitHub, and EU startup news"
-            >
-              <RefreshIcon spinning={refreshing} />
-              <span className="hidden sm:inline">
-                {refreshing ? 'Fetching…' : 'Fetch Sources'}
               </span>
             </button>
 
