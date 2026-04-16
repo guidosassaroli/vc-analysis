@@ -12,6 +12,7 @@ const XIcon = () => (
 const ALL_GEOGRAPHIES = [
   'France', 'Germany', 'Spain', 'Israel',
   'United Kingdom', 'Sweden', 'Netherlands', 'Switzerland', 'Finland', 'Denmark',
+  'Italy', 'USA',
 ]
 
 const ALL_SECTORS = [
