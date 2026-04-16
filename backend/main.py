@@ -131,8 +131,9 @@ class ChatRequest(BaseModel):
 _VALID_STATUSES = {"Sourced", "In Review", "Meeting Booked", "Term Sheet", "Pass"}
 
 
-class _TextExtractor(HTMLParser):
-    SKIP = {'script', 'style', 'noscript', 'nav', 'head'}
+class _ScrapeExtractor(HTMLParser):
+    """Single-pass HTML parser: extracts body text AND structured metadata signals."""
+    SKIP = {'style', 'noscript', 'nav', 'footer'}
     HEADINGS = {'h1', 'h2', 'h3'}
 
     def __init__(self):
@@ -140,20 +141,68 @@ class _TextExtractor(HTMLParser):
         self._texts = []
         self._skip_depth = 0
         self._current_heading = None
+        self._in_script_json_ld = False
+        self._in_title = False
+        self._script_buf = []
+        # Structured signals
+        self.og_site_name = None
+        self.og_description = None
+        self.meta_description = None
+        self.og_url = None
+        self.title_text = None
+        self.linkedin_url = None
+        self.json_ld_blocks = []
 
     def handle_starttag(self, tag, attrs):
-        if tag in self.SKIP:
+        attr = dict(attrs)
+        if tag == 'meta':
+            prop = attr.get('property', '')
+            name = attr.get('name', '')
+            content = attr.get('content', '').strip()
+            if prop == 'og:site_name':    self.og_site_name = content
+            if prop == 'og:description':  self.og_description = content
+            if prop == 'og:url':          self.og_url = content
+            if name == 'description':     self.meta_description = content
+        elif tag == 'a':
+            href = attr.get('href', '')
+            if 'linkedin.com/company/' in href and not self.linkedin_url:
+                self.linkedin_url = href
+        elif tag == 'script':
+            if attr.get('type') == 'application/ld+json':
+                self._in_script_json_ld = True
+                self._script_buf = []
+            else:
+                self._skip_depth += 1
+        elif tag == 'title':
+            self._in_title = True
+        elif tag in self.SKIP:
             self._skip_depth += 1
         elif tag in self.HEADINGS:
             self._current_heading = tag.upper()
 
     def handle_endtag(self, tag):
-        if tag in self.SKIP:
+        if tag == 'script':
+            if self._in_script_json_ld:
+                self._in_script_json_ld = False
+                raw = ''.join(self._script_buf).strip()
+                if raw:
+                    self.json_ld_blocks.append(raw)
+            else:
+                self._skip_depth = max(0, self._skip_depth - 1)
+        elif tag == 'title':
+            self._in_title = False
+        elif tag in self.SKIP:
             self._skip_depth = max(0, self._skip_depth - 1)
         elif tag in self.HEADINGS:
             self._current_heading = None
 
     def handle_data(self, data):
+        if self._in_script_json_ld:
+            self._script_buf.append(data)
+            return
+        if self._in_title:
+            self.title_text = data.strip()
+            return
         if not self._skip_depth:
             t = data.strip()
             if t:
@@ -164,6 +213,85 @@ class _TextExtractor(HTMLParser):
 
     def get_text(self):
         return re.sub(r'\s+', ' ', ' '.join(self._texts))
+
+
+def _scrape_hints(html: str, url: str) -> dict:
+    """Deterministically extract high-confidence fields from raw HTML."""
+    ex = _ScrapeExtractor()
+    try:
+        ex.feed(html[:300_000])
+    except Exception:
+        pass
+
+    hints: dict = {}
+
+    # Name: og:site_name is most reliable, then <title> (strip taglines)
+    if ex.og_site_name:
+        hints['name'] = ex.og_site_name.strip()
+    elif ex.title_text:
+        name = re.split(r'\s*[|·—\-]\s*', ex.title_text)[0].strip()
+        if name:
+            hints['name'] = name
+
+    # Description: meta description > og:description (capped at 250 chars)
+    desc = ex.meta_description or ex.og_description
+    if desc:
+        hints['description'] = desc.strip()[:250]
+
+    # LinkedIn
+    if ex.linkedin_url:
+        hints['linkedin_url'] = ex.linkedin_url
+
+    # Website: og:url or the requested url
+    hints['website'] = ex.og_url or url
+
+    # Founded year: regex on body text
+    body_text = ex.get_text()
+    year_match = re.search(
+        r'[Ff]ounded\s+(?:in\s+)?(\d{4})'
+        r'|[Ee]st(?:ablished)?\s*\.?\s*(\d{4})'
+        r'|[Ss]ince\s+(\d{4})'
+        r'|©\s*(\d{4})',
+        body_text,
+    )
+    if year_match:
+        year = next(g for g in year_match.groups() if g)
+        if 2000 <= int(year) <= 2026:
+            hints['founded_year'] = int(year)
+
+    # Funding: regex for common patterns
+    funding_match = re.search(
+        r'[Rr]aised?\s+\$?([\d.,]+)\s*([MBK])\s*(?:USD|EUR)?'
+        r'|\$?([\d.,]+)\s*([MBK])\s+[Ss]eries\s+[A-C]'
+        r'|[Ss]eries\s+([A-C])\s+(?:round|funding)',
+        body_text,
+    )
+    if funding_match:
+        hints['funding'] = funding_match.group(0).strip()[:80]
+
+    # JSON-LD: extract name, description, foundingDate, addressCountry
+    for block in ex.json_ld_blocks:
+        try:
+            ld = json.loads(block)
+            if isinstance(ld, list):
+                ld = ld[0]
+            if isinstance(ld, dict):
+                if 'name' not in hints and ld.get('name'):
+                    hints['name'] = str(ld['name']).strip()
+                if 'description' not in hints and ld.get('description'):
+                    hints['description'] = str(ld['description']).strip()[:250]
+                if 'founded_year' not in hints and ld.get('foundingDate'):
+                    try:
+                        hints['founded_year'] = int(str(ld['foundingDate'])[:4])
+                    except ValueError:
+                        pass
+                addr = ld.get('address', {})
+                if isinstance(addr, dict) and addr.get('addressCountry') and 'country_hint' not in hints:
+                    hints['country_hint'] = addr['addressCountry']
+        except Exception:
+            pass
+
+    return hints
 
 
 _TEAM_SUBPATHS = ['/about', '/team', '/about-us', '/company', '/people', '/founders']
@@ -177,7 +305,7 @@ def _html_to_text(html: str) -> str:
     if len(html) > 300_000:
         html = html[:300_000]
     try:
-        extractor = _TextExtractor()
+        extractor = _ScrapeExtractor()
         extractor.feed(html)
         return extractor.get_text()
     except Exception:
@@ -196,15 +324,36 @@ async def _fetch_subpage_text(client: httpx.AsyncClient, base_url: str, path: st
         return ""
 
 
-def _extract_startup_info(url: str, text: str) -> dict:
+def _extract_startup_info(url: str, text: str, hints: dict = None) -> dict:
     import anthropic
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+
+    hints = hints or {}
+
+    # Build pre-filled block for Claude
+    pre_filled = []
+    for k in ('name', 'description', 'linkedin_url', 'website', 'founded_year', 'funding'):
+        if k in hints:
+            pre_filled.append(f'- {k}: {hints[k]}')
+    if 'country_hint' in hints:
+        pre_filled.append(f'- country hint (from structured data): {hints["country_hint"]}')
+
+    hints_block = (
+        'We already extracted these fields from HTML metadata — copy them to the output unchanged '
+        'unless the page text clearly contradicts them:\n'
+        + '\n'.join(pre_filled) + '\n\n'
+    ) if pre_filled else ''
+
+    # Use shorter text slice when hints already give us name + description
+    text_limit = 6000 if pre_filled else 12000
+
     prompt = (
-        f"Extract startup info from this website content. Headings are marked [H1]/[H2]/[H3] to help locate sections.\n"
-        f"URL: {url}\n"
-        f"Content: {text[:12000]}\n\n"
-        "Return JSON with these fields:\n"
+        f'{hints_block}'
+        f'Extract startup info from this website content. Headings are marked [H1]/[H2]/[H3] to help locate sections.\n'
+        f'URL: {url}\n'
+        f'Content: {text[:text_limit]}\n\n'
+        'Return JSON with these fields:\n'
         '- name: company name (string)\n'
         '- description: 1-2 sentence description of what the company does, max 200 chars, factual and concise\n'
         '- sector: one of ["AI/ML","Biotech","Quantum","Cybersecurity","Climate Tech","Semiconductors","Fintech","Industrial Robotics","Software"]\n'
@@ -215,7 +364,7 @@ def _extract_startup_info(url: str, text: str) -> dict:
         '- funding: funding info as a short string (e.g. "Raised $2M Seed") if mentioned, else null\n'
         '- linkedin_url: LinkedIn company page URL if present in the content, else null\n'
         f'- website: canonical website URL (use {url} if unclear)\n\n'
-        "Return only valid JSON, no markdown."
+        'Return only valid JSON, no markdown.'
     )
     response = client.messages.create(
         model=model,
@@ -322,7 +471,8 @@ async def startup_from_url(
         try:
             resp = await client.get(url)
             resp.raise_for_status()
-            homepage_text = _html_to_text(resp.text)
+            homepage_html = resp.text
+            homepage_text = _html_to_text(homepage_html)
         except Exception as e:
             raise HTTPException(status_code=422, detail=f"Could not fetch page: {e}")
 
@@ -335,6 +485,8 @@ async def startup_from_url(
         subpage_tasks = [_fetch_subpage_text(client, url, path) for path in _TEAM_SUBPATHS]
         subpage_texts = await asyncio.gather(*subpage_tasks)
 
+    hints = _scrape_hints(homepage_html, url)
+
     combined_parts = [homepage_text]
     for sub_text in subpage_texts:
         if sub_text and sub_text[:200] != homepage_text[:200]:
@@ -343,11 +495,16 @@ async def startup_from_url(
 
     loop = asyncio.get_running_loop()
     try:
-        info = await loop.run_in_executor(None, _extract_startup_info, url, combined_text)
+        info = await loop.run_in_executor(None, _extract_startup_info, url, combined_text, hints)
     except (json.JSONDecodeError, KeyError, IndexError) as e:
         raise HTTPException(status_code=422, detail=f"Could not parse startup info: {e}")
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Info extraction failed: {e}")
+
+    # Trust deterministic scraping for fields Claude might miss
+    for k in ('linkedin_url', 'founded_year', 'website'):
+        if k in hints and not info.get(k):
+            info[k] = hints[k]
 
     website = info.get("website") or url
     existing = session.exec(

@@ -78,5 +78,19 @@
     "website": "https://www.invertix.ai/",
     "source": "manual",
     "hn_url": "https://www.invertix.ai/"
+  },
+  {
+    "name": "L'AI platform per le Operations Ospedaliere",
+    "description": "Hisy is an AI platform for hospital operations that digitalizes waiting lists, surgical planning, and pre-admission scheduling to streamline workflows.",
+    "sector": "AI/ML",
+    "stage": "Unknown",
+    "country": "Italy",
+    "founded_year": null,
+    "founders": null,
+    "funding": null,
+    "linkedin_url": null,
+    "website": "https://www.gethisy.com/",
+    "source": "manual",
+    "hn_url": "https://www.gethisy.com/"
   }
 ]
