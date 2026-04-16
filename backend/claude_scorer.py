@@ -38,6 +38,34 @@ MEMO_SYSTEM = """You are a senior investment analyst writing internal due dilige
 Write concise, analytical, and insightful content. Be direct and honest about both opportunities and risks.
 Each section must be exactly 1-2 sentences — no more. Always respond with valid JSON only."""
 
+DEEP_MEMO_SYSTEM = """You are a senior investment analyst preparing a detailed due diligence memo for an IC presentation.
+Write analytical, evidence-based, and specific content. Be direct and honest about both opportunities and risks.
+Each section should be 4-6 sentences with concrete details, named examples, and quantified claims where possible.
+Always respond with valid JSON only."""
+
+DEEP_MEMO_PROMPT = """Write a detailed IC-ready due diligence memo for this startup.
+
+Startup:
+Name: {name}
+Description: {description}
+Sector: {sector}
+Stage: {stage}
+Country: {country}
+Founders: {founders}
+Fit Score: {fit_score}/100
+Score Rationale: {rationale}
+Red Flag: {red_flag}
+{thesis_context}
+Write a detailed memo in this JSON format. Each section must be 4-6 sentences with specific, actionable insight:
+{{
+  "problem": "<Define the market pain precisely. Quantify TAM/SAM if inferable. Explain the current alternative and why it fails. State why the timing is right now — 4-6 sentences>",
+  "solution": "<Explain the core technical approach. Describe the IP, patents, or proprietary methods. Name 2-3 specific competitors and state the clear differentiation. Identify the defensible moat — 4-6 sentences>",
+  "team": "<Profile each founder individually: academic pedigree, prior companies, prior exits, specific domain expertise. Note how the team composition maps to the problem. Identify any team gaps — 4-6 sentences>",
+  "traction": "<Describe commercial progress with specifics: customer count, ARR/MRR if known, growth rate, key design wins, LOIs, pilots, or strategic partnerships. Explain what the traction signals about product-market fit — 4-6 sentences>",
+  "elaia_fit": "<State explicitly why this fits the fund thesis. Explain why now and why Elaia is the right lead. Reference comparable portfolio companies or exits. Describe the expected return profile and plausible exit paths — 4-6 sentences>",
+  "risks": "<Identify the top 3 open diligence questions. For each: state the risk clearly, explain why it matters, and suggest a specific way to answer it (e.g. reference check, technical audit, customer call) — 4-6 sentences>"
+}}"""
+
 MEMO_PROMPT = """Write a due diligence memo for this startup.
 
 Startup:
@@ -313,3 +341,65 @@ def generate_memo(startup_data: dict, thesis_config: Optional[dict] = None) -> d
             "memo_elaia_fit": None,
             "memo_red_flags": None,
         }
+
+
+def generate_deep_memo(startup_data: dict, thesis_config: Optional[dict] = None) -> dict:
+    """
+    Generate an IC-ready deep dive memo with 4-6 sentences per section.
+    Returns a dict with keys: problem, solution, team, traction, elaia_fit, risks.
+    """
+    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+    thesis_context = ""
+    if thesis_config:
+        geos = thesis_config.get("geographies")
+        sectors = thesis_config.get("sectors")
+        stages = thesis_config.get("stages")
+        parts = []
+        if geos:
+            parts.append(f"Target geographies: {', '.join(geos)}")
+        if sectors:
+            parts.append(f"Target sectors: {', '.join(sectors)}")
+        if stages:
+            parts.append(f"Target stages: {', '.join(stages)}")
+        if parts:
+            thesis_context = "Investment thesis focus: " + " | ".join(parts) + "\n"
+
+    prompt = DEEP_MEMO_PROMPT.format(
+        name=startup_data.get("name", ""),
+        description=startup_data.get("description", "")[:1200],
+        sector=startup_data.get("sector", ""),
+        stage=startup_data.get("stage", ""),
+        country=startup_data.get("country", ""),
+        founders=startup_data.get("founders") or "Unknown",
+        fit_score=startup_data.get("fit_score", "N/A"),
+        rationale=startup_data.get("score_rationale", ""),
+        red_flag=startup_data.get("red_flag") or "None identified",
+        thesis_context=thesis_context,
+    )
+
+    try:
+        message = client.messages.create(
+            model=MODEL,
+            max_tokens=4096,
+            system=DEEP_MEMO_SYSTEM,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = message.content[0].text
+        parsed = _parse_json_response(raw)
+
+        if not parsed:
+            return {"error": "Unable to parse deep memo response. Please retry."}
+
+        return {
+            "problem": parsed.get("problem", ""),
+            "solution": parsed.get("solution", ""),
+            "team": parsed.get("team", ""),
+            "traction": parsed.get("traction", ""),
+            "elaia_fit": parsed.get("elaia_fit", ""),
+            "risks": parsed.get("risks", ""),
+        }
+
+    except Exception as e:
+        print(f"[Claude] Deep memo generation failed for {startup_data.get('name')}: {e}")
+        return {"error": f"Deep memo generation error: {str(e)[:200]}"}

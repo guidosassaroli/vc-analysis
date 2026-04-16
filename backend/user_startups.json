@@ -64,5 +64,19 @@
     "website": "https://electrogenos.co.uk/",
     "source": "manual",
     "hn_url": "https://electrogenos.co.uk/"
+  },
+  {
+    "name": "Invertix",
+    "description": "AI-driven renewable energy operating system using autonomous agents to audit telemetry, automate O&M, and ensure financial compliance for solar portfolios.",
+    "sector": "Climate Tech",
+    "stage": "Unknown",
+    "country": "Italy",
+    "founded_year": null,
+    "founders": null,
+    "funding": null,
+    "linkedin_url": null,
+    "website": "https://www.invertix.ai/",
+    "source": "manual",
+    "hn_url": "https://www.invertix.ai/"
   }
 ]

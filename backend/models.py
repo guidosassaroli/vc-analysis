@@ -49,6 +49,13 @@ class Startup(SQLModel, table=True):
     memo_elaia_fit: Optional[str] = None
     memo_red_flags: Optional[str] = None
 
+    # Deep dive memo (JSON string, IC-ready)
+    deep_memo: Optional[str] = None
+    deep_memo_generated_at: Optional[datetime] = None
+
+    # Pipeline pass reason
+    pass_reason: Optional[str] = None
+
     scored_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -96,6 +103,9 @@ class StartupRead(SQLModel):
     memo_traction: Optional[str]
     memo_elaia_fit: Optional[str]
     memo_red_flags: Optional[str]
+    deep_memo: Optional[str]
+    deep_memo_generated_at: Optional[datetime]
+    pass_reason: Optional[str]
     scored_at: Optional[datetime]
     created_at: datetime
 

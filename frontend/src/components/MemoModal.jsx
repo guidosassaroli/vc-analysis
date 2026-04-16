@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { generateMemo, scoreStartup, chatWithStartup, updateStatus, updateNotes, saveChatHistory } from '../api'
+import { generateMemo, generateDeepMemo, scoreStartup, chatWithStartup, updateStatus, updateNotes, saveChatHistory } from '../api'
 import { getScoreColor } from '../utils/scoreColors'
 import { getStatusClass, PIPELINE_STATUSES } from '../utils/statusColors'
 
@@ -201,8 +201,13 @@ function MemoSection({ Icon, label, content, redFlags }) {
 export default function MemoModal({ startup: initialStartup, onClose, onUpdated }) {
   const [startup, setStartup] = useState(initialStartup)
   const [generating, setGenerating] = useState(false)
+  const [generatingDeep, setGeneratingDeep] = useState(false)
+  const [memoMode, setMemoMode] = useState('standard')
   const [rescoring, setRescoring] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
+  const [passReasonPending, setPassReasonPending] = useState(false)
+  const [passReason, setPassReason] = useState('')
+  const [passReasonOther, setPassReasonOther] = useState('')
   const [notes, setNotes] = useState(initialStartup.user_notes || '')
   const [notesSaving, setNotesSaving] = useState(false)
   const [chatMessages, setChatMessages] = useState(() => {
@@ -259,6 +264,20 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
     }
   }
 
+  const handleGenerateDeepMemo = async () => {
+    setGeneratingDeep(true)
+    try {
+      const updated = await generateDeepMemo(startup.id)
+      setStartup(updated)
+      onUpdated?.(updated)
+      setMemoMode('deep')
+    } catch (e) {
+      console.error('Deep memo generation failed', e)
+    } finally {
+      setGeneratingDeep(false)
+    }
+  }
+
   const handleRescore = async () => {
     setRescoring(true)
     try {
@@ -286,9 +305,30 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
   }
 
   const handleStatusChange = async (newStatus) => {
+    if (newStatus === 'Pass') {
+      setPassReason('')
+      setPassReasonOther('')
+      setPassReasonPending(true)
+      return
+    }
     setStatusUpdating(true)
     try {
       const updated = await updateStatus(startup.id, newStatus)
+      setStartup(updated)
+      onUpdated?.(updated)
+    } catch (e) {
+      console.error('Status update failed', e)
+    } finally {
+      setStatusUpdating(false)
+    }
+  }
+
+  const handleConfirmPass = async () => {
+    const reason = passReason === 'Other' ? passReasonOther.trim() : passReason
+    setPassReasonPending(false)
+    setStatusUpdating(true)
+    try {
+      const updated = await updateStatus(startup.id, 'Pass', reason || null)
       setStartup(updated)
       onUpdated?.(updated)
     } catch (e) {
@@ -374,6 +414,58 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+                {startup.status === 'Pass' && startup.pass_reason && (
+                  <span className="text-xs text-white/40 italic">
+                    {startup.pass_reason}
+                  </span>
+                )}
+
+                {/* Pass reason picker */}
+                {passReasonPending && (
+                  <div className="mt-2 w-full bg-white/10 border border-white/20 rounded-xl p-3 space-y-2">
+                    <p className="text-xs font-semibold text-white/70">Why are you passing?</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Stage too late', 'Not our thesis', 'Team concern', 'Geography mismatch', 'Insufficient traction', 'Other'].map(r => (
+                        <button
+                          key={r}
+                          onClick={() => setPassReason(r)}
+                          className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                            passReason === r
+                              ? 'bg-white text-slate-900 font-semibold'
+                              : 'bg-white/10 text-white/70 hover:bg-white/20'
+                          }`}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                    {passReason === 'Other' && (
+                      <input
+                        autoFocus
+                        type="text"
+                        value={passReasonOther}
+                        onChange={e => setPassReasonOther(e.target.value)}
+                        placeholder="Describe reason…"
+                        className="w-full text-xs px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/40"
+                      />
+                    )}
+                    <div className="flex gap-2 pt-0.5">
+                      <button
+                        onClick={handleConfirmPass}
+                        disabled={!passReason || (passReason === 'Other' && !passReasonOther.trim())}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold disabled:opacity-40 transition-colors"
+                      >
+                        Confirm Pass
+                      </button>
+                      <button
+                        onClick={() => setPassReasonPending(false)}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -455,26 +547,87 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
           {hasMemo ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between mb-1">
-                <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">
-                  Due Diligence Memo
-                </h3>
-                <button
-                  onClick={handleGenerateMemo}
-                  disabled={generating}
-                  className="btn-ghost text-xs text-brand-navy"
-                >
-                  {generating ? 'Regenerating…' : '↺ Regenerate'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">
+                    Due Diligence Memo
+                  </h3>
+                  {startup.deep_memo && (
+                    <div className="flex rounded-lg overflow-hidden border border-slate-200 text-xs">
+                      <button
+                        onClick={() => setMemoMode('standard')}
+                        className={`px-2.5 py-1 font-medium transition-colors ${memoMode === 'standard' ? 'bg-brand-navy text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                      >
+                        Quick
+                      </button>
+                      <button
+                        onClick={() => setMemoMode('deep')}
+                        className={`px-2.5 py-1 font-medium transition-colors ${memoMode === 'deep' ? 'bg-brand-navy text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                      >
+                        Deep Dive
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {!startup.deep_memo && (
+                    <button
+                      onClick={handleGenerateDeepMemo}
+                      disabled={generatingDeep}
+                      className="btn-ghost text-xs text-violet-700"
+                      title="Generate an IC-ready memo with 4-6 sentences per section, competitor analysis, and open diligence questions"
+                    >
+                      {generatingDeep ? 'Generating…' : '↗ Deep Dive'}
+                    </button>
+                  )}
+                  <button
+                    onClick={handleGenerateMemo}
+                    disabled={generating}
+                    className="btn-ghost text-xs text-brand-navy"
+                  >
+                    {generating ? 'Regenerating…' : '↺ Regenerate'}
+                  </button>
+                </div>
               </div>
-              {MEMO_SECTIONS.map(section => (
-                <MemoSection
-                  key={section.key}
-                  Icon={section.Icon}
-                  label={section.label}
-                  content={startup[section.key]}
-                  redFlags={section.redFlags}
-                />
-              ))}
+
+              {memoMode === 'standard' ? (
+                MEMO_SECTIONS.map(section => (
+                  <MemoSection
+                    key={section.key}
+                    Icon={section.Icon}
+                    label={section.label}
+                    content={startup[section.key]}
+                    redFlags={section.redFlags}
+                  />
+                ))
+              ) : (() => {
+                const dm = (() => { try { return JSON.parse(startup.deep_memo || '{}') } catch { return {} } })()
+                const deepSections = [
+                  { key: 'problem',   label: 'Problem',         Icon: MagnifyingGlassIcon },
+                  { key: 'solution',  label: 'Solution',        Icon: LightBulbIcon },
+                  { key: 'team',      label: 'Team',            Icon: UserGroupIcon },
+                  { key: 'traction',  label: 'Traction',        Icon: TrendingUpIcon },
+                  { key: 'elaia_fit', label: 'Thesis Fit',      Icon: CheckCircleIcon },
+                  { key: 'risks',     label: 'Open Questions',  Icon: ExclamationTriangleIcon, redFlags: true },
+                ]
+                return deepSections.map(s => (
+                  <MemoSection key={s.key} Icon={s.Icon} label={s.label} content={dm[s.key]} redFlags={s.redFlags} />
+                ))
+              })()}
+
+              {startup.deep_memo && startup.deep_memo_generated_at && memoMode === 'deep' && (
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-xs text-slate-400">
+                    IC-ready · Generated {new Date(startup.deep_memo_generated_at).toLocaleDateString()}
+                  </span>
+                  <button
+                    onClick={handleGenerateDeepMemo}
+                    disabled={generatingDeep}
+                    className="btn-ghost text-xs text-violet-700"
+                  >
+                    {generatingDeep ? 'Regenerating…' : '↺ Regenerate Deep Dive'}
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8">

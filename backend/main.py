@@ -13,7 +13,7 @@ from typing import Optional
 import httpx
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,7 +38,7 @@ def _parse_thesis(raw: Optional[str]) -> Optional[dict]:
 from sources.hn import fetch_hn_startups
 from sources.github import fetch_github_startups
 from sources.rss import fetch_rss_startups
-from claude_scorer import score_startup, generate_memo
+from claude_scorer import score_startup, generate_memo, generate_deep_memo
 
 app = FastAPI(
     title="VC Deal Flow API",
@@ -76,6 +76,9 @@ def _run_migrations():
         ("startup", "subscore_stage", "FLOAT"),
         ("startup", "user_notes", "TEXT"),
         ("startup", "chat_history", "TEXT"),
+        ("startup", "deep_memo", "TEXT"),
+        ("startup", "deep_memo_generated_at", "TIMESTAMP WITH TIME ZONE"),
+        ("startup", "pass_reason", "VARCHAR"),
     ]
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         # Drop FK constraint if present — user_id auth is enforced via JWT, not DB FK
@@ -109,6 +112,7 @@ class FetchUrlRequest(BaseModel):
 
 class StatusUpdateRequest(BaseModel):
     status: str
+    pass_reason: Optional[str] = None
 
 class NotesUpdateRequest(BaseModel):
     user_notes: str
@@ -514,6 +518,40 @@ def update_status(
     if not startup or startup.user_id != user_id:
         raise HTTPException(status_code=404, detail="Startup not found")
     startup.status = req.status
+    if req.status == "Pass":
+        startup.pass_reason = req.pass_reason or None
+    else:
+        startup.pass_reason = None
+    session.add(startup)
+    session.commit()
+    session.refresh(startup)
+    return startup
+
+
+@app.post("/api/startups/{startup_id}/deep-memo", response_model=StartupRead)
+def generate_deep_memo_for(
+    startup_id: int,
+    user_id: str = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    startup = session.get(Startup, startup_id)
+    if not startup or startup.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Startup not found")
+
+    cfg = session.get(UserConfigRecord, user_id)
+    thesis = _parse_thesis(cfg.thesis_notes if cfg else None)
+
+    startup_dict = {
+        "name": startup.name, "description": startup.description,
+        "sector": startup.sector, "stage": startup.stage,
+        "country": startup.country, "founders": startup.founders,
+        "fit_score": startup.fit_score, "score_rationale": startup.score_rationale,
+        "red_flag": startup.red_flag,
+    }
+    result = generate_deep_memo(startup_dict, thesis_config=thesis)
+    startup.deep_memo = json.dumps(result)
+    startup.deep_memo_generated_at = datetime.now(timezone.utc)
+
     session.add(startup)
     session.commit()
     session.refresh(startup)
