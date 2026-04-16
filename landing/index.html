@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Deal Flow Intelligence — AI-powered deal flow for deep tech VCs</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230e847f'/%3E%3Cpolygon points='4,28 8,28 10,20 6,20' fill='white'/%3E%3Cpolygon points='11,28 15,28 19,14 15,14' fill='white'/%3E%3Cpolygon points='18,28 22,28 27,7 23,7' fill='white'/%3E%3Ccircle cx='26' cy='4' r='2.5' fill='white'/%3E%3C/svg%3E" />
   <meta name="description" content="Source, score, and track European deep tech startups with AI that understands your investment thesis. Your personal research vault, always in sync." />
   <meta property="og:title" content="Deal Flow Intelligence" />
   <meta property="og:description" content="AI-powered deal flow for deep tech VCs. Score startups, generate DD memos, and track your pipeline — in seconds." />
@@ -162,6 +163,10 @@
       animation: pulse-ring 2s cubic-bezier(0.4,0,0.6,1) infinite;
     }
 
+    /* ── Comparison row hover ── */
+    .vs-row { transition: background 0.2s; }
+    .vs-row:hover { background: #f8fafc; }
+
     /* ── Stats counter ── */
     .stat-num { display: inline-block; }
 
@@ -208,6 +213,7 @@
     </div>
     <div class="flex items-center gap-3">
       <a href="#features" class="text-white/40 hover:text-white/70 text-[13px] transition-colors hidden sm:block">Features</a>
+      <a href="#vs-llms" class="text-white/40 hover:text-white/70 text-[13px] transition-colors hidden sm:block">vs. LLMs</a>
       <a href="#vault" class="text-white/40 hover:text-white/70 text-[13px] transition-colors hidden sm:block">Your data</a>
       <a
         href="https://vc-analysis.vercel.app"
@@ -520,6 +526,119 @@
   </div>
 </section>
 
+<!-- ─── VS LLMs ──────────────────────────────────────────────────────────────── -->
+<section id="vs-llms" class="py-28 px-6 bg-slate-50 border-y border-slate-100">
+  <div class="max-w-6xl mx-auto">
+
+    <div class="max-w-2xl mb-16 reveal">
+      <p class="text-[14px] font-semibold text-teal mb-3">LLMs is a conversation. This is a workflow.</p>
+      <h2 class="text-[40px] font-bold text-slate-900 mb-4 leading-tight">Why not just use<br>LLMs?</h2>
+      <p class="text-[15.5px] text-slate-500 leading-relaxed">
+        When an analyst uses LLMs for deal flow, they get an ephemeral chat that forgets everything, produces no structured output, can't be filtered, can't be compared across deals, and requires re-prompting from scratch every time. This tool does none of those things.
+      </p>
+    </div>
+
+    <!-- Column headers -->
+    <div class="grid grid-cols-[1fr_1fr_1fr] gap-4 mb-4 reveal" style="transition-delay:.05s">
+      <div></div>
+      <div class="flex items-center gap-2.5 px-4 py-2.5 bg-slate-200/60 rounded-xl">
+        <div class="w-6 h-6 rounded-lg bg-slate-400/20 flex items-center justify-center shrink-0">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09z"/></svg>
+        </div>
+        <div>
+          <p class="text-[11.5px] font-semibold text-slate-500 leading-none">Generic LLM</p>
+          <p class="text-[10px] text-slate-400 mt-0.5">ChatGPT · Gemini · Claude</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2.5 px-4 py-2.5 bg-teal/10 border border-teal/20 rounded-xl">
+        <div class="w-6 h-6 rounded-lg bg-teal/20 flex items-center justify-center shrink-0">
+          <svg width="12" height="12" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <polygon points="4,28 8,28 10,20 6,20" fill="#0e847f" opacity="0.5"/>
+            <polygon points="11,28 15,28 19,14 15,14" fill="#0e847f" opacity="0.75"/>
+            <polygon points="18,28 22,28 27,7 23,7" fill="#0e847f"/>
+            <circle cx="26" cy="4" r="2.5" fill="#0e847f"/>
+          </svg>
+        </div>
+        <div>
+          <p class="text-[11.5px] font-semibold text-teal leading-none">Deal Flow Intelligence</p>
+          <p class="text-[10px] text-teal/60 mt-0.5">Purpose-built for VC</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparison rows -->
+    <div class="border border-slate-200 rounded-2xl overflow-hidden bg-white reveal" style="transition-delay:.1s; box-shadow: 0 1px 3px rgb(0 0 0 / 0.05)">
+
+      <!-- Row A: Persistent, structured state -->
+      <div class="vs-row grid grid-cols-[1fr_1fr_1fr] gap-0 border-b border-slate-100">
+        <div class="px-5 py-5 flex items-start gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 2.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>
+          </div>
+          <div>
+            <p class="text-[13px] font-semibold text-slate-800 tracking-tight">Persistent, structured state</p>
+          </div>
+        </div>
+        <div class="px-5 py-5 border-l border-slate-100 flex items-start gap-2">
+          <svg class="shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          <p class="text-[12.5px] text-slate-500 leading-relaxed">No schema, no history, no way to filter or compare across deals. Re-prompt from scratch every single time.</p>
+        </div>
+        <div class="px-5 py-5 border-l border-slate-100 flex items-start gap-2 bg-teal/[0.03]">
+          <svg class="shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0e847f" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+          <p class="text-[12.5px] text-slate-600 leading-relaxed">Every startup lives in a database with a consistent schema — score, subscores, memo, notes, pipeline status, chat history. Sort, filter, export. It's always there.</p>
+        </div>
+      </div>
+
+      <!-- Row B: Auditable scoring -->
+      <div class="vs-row grid grid-cols-[1fr_1fr_1fr] gap-0 border-b border-slate-100">
+        <div class="px-5 py-5 flex items-start gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+          </div>
+          <div>
+            <p class="text-[13px] font-semibold text-slate-800 tracking-tight">Scoring you can defend and understand</p>
+          </div>
+        </div>
+        <div class="px-5 py-5 border-l border-slate-100 flex items-start gap-2">
+          <svg class="shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          <p class="text-[12.5px] text-slate-500 leading-relaxed">Analysis varies wildly between sessions, phrasings, days. You can't defend "ChatGPT seemed positive about it" in front of a partner.</p>
+        </div>
+        <div class="px-5 py-5 border-l border-slate-100 flex items-start gap-2 bg-teal/[0.03]">
+          <svg class="shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0e847f" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+          <p class="text-[12.5px] text-slate-600 leading-relaxed">Fixed rubric, same thesis weights, every time. An analyst can defend a 72 vs a 58 — there's a traceable rationale behind every number.</p>
+        </div>
+      </div>
+
+      <!-- Row C: The feedback loop -->
+      <div class="vs-row grid grid-cols-[1fr_1fr_1fr] gap-0">
+        <div class="px-5 py-5 flex items-start gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+          </div>
+          <div>
+            <p class="text-[13px] font-semibold text-slate-800 tracking-tight">Analyst in-the-loop</p>
+          </div>
+        </div>
+        <div class="px-5 py-5 border-l border-slate-100 flex items-start gap-2">
+          <svg class="shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          <p class="text-[12.5px] text-slate-500 leading-relaxed">One-shot prompt. The output is the output. Just a chat.</p>
+        </div>
+        <div class="px-5 py-5 border-l border-slate-100 flex items-start gap-2 bg-teal/[0.03]">
+          <svg class="shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0e847f" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+          <p class="text-[12.5px] text-slate-600 leading-relaxed">Human-in-the-loop system, not a one-shot prompt.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom note -->
+    <p class="text-center text-[13px] text-slate-400 mt-8 reveal" style="transition-delay:.15s">
+      Built for analysts, not general queries. <a href="https://vc-analysis.vercel.app" target="_blank" rel="noopener noreferrer" class="text-teal hover:text-teal-dark underline underline-offset-2 transition-colors font-medium">Try it free →</a>
+    </p>
+
+  </div>
+</section>
+
 <!-- ─── VAULT SECTION ─────────────────────────────────────────────────────────── -->
 <section id="vault" class="bg-ink noise py-28 px-6 relative overflow-hidden">
   <div class="orb w-[400px] h-[400px] bg-teal/15 top-[-80px] left-[-80px]" style="animation: floatB 12s ease-in-out infinite;"></div>
@@ -533,7 +652,7 @@
         <p class="text-[11.5px] font-semibold uppercase tracking-widest text-teal mb-3">Your private research vault</p>
         <h2 class="text-[40px] font-bold text-white mb-5 leading-tight">Every insight,<br>always yours.</h2>
         <p class="text-[15.5px] text-slate-400 leading-relaxed mb-8">
-          Your deal flow is personal. Every startup you source, every note you write, every conversation with the AI — stored privately, linked to your account, never shared.
+          Your deal flow is personal. Every startup you source, every note you write, every conversation with the AI — stored privately, linked to your account.
         </p>
         <p class="text-[15.5px] text-slate-400 leading-relaxed mb-10">
           Sign in from any device and your full pipeline is waiting. Scores, memos, chat history, analyst notes — exactly where you left them.
@@ -549,19 +668,7 @@
             <div class="w-5 h-5 rounded-full bg-teal/20 border border-teal/30 flex items-center justify-center shrink-0 mt-0.5">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#14a89e" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
             </div>
-            Magic link sign-in — no password to manage or forget
-          </div>
-          <div class="flex items-start gap-3 text-[14px] text-slate-300">
-            <div class="w-5 h-5 rounded-full bg-teal/20 border border-teal/30 flex items-center justify-center shrink-0 mt-0.5">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#14a89e" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-            </div>
             Persistent chat history survives page refreshes and sessions
-          </div>
-          <div class="flex items-start gap-3 text-[14px] text-slate-300">
-            <div class="w-5 h-5 rounded-full bg-teal/20 border border-teal/30 flex items-center justify-center shrink-0 mt-0.5">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#14a89e" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-            </div>
-            Hosted on Supabase with JWT-authenticated API access
           </div>
         </div>
       </div>
@@ -706,7 +813,7 @@
         <p class="text-[11.5px] font-semibold uppercase tracking-widest text-teal mb-3">AI that learns from you</p>
         <h2 class="text-[40px] font-bold text-slate-900 mb-5 leading-tight">The more you write,<br>the smarter it gets.</h2>
         <p class="text-[15.5px] text-slate-500 leading-relaxed mb-6">
-          Add analyst notes to any startup. When you re-score, those notes are injected directly into the AI prompt — alongside your last 6 chat messages.
+          Add analyst notes to any startup. When you re-score, those notes are injected directly into the AI prompt — alongside your chat messages.
         </p>
         <p class="text-[15.5px] text-slate-500 leading-relaxed mb-8">
           Write <em>"The CTO has a photonics PhD and previously led hardware at a Unit 8200 spinout"</em> — the Team score adjusts to reflect your context. The AI reads what you know.
@@ -719,7 +826,7 @@
           </div>
           <div class="flex items-center gap-2 text-[13px] text-slate-600">
             <span class="w-1.5 h-1.5 rounded-full bg-teal shrink-0"></span>
-            Last 6 messages from your AI chat
+            Messages from your AI chat
           </div>
           <div class="flex items-center gap-2 text-[13px] text-slate-600">
             <span class="w-1.5 h-1.5 rounded-full bg-teal shrink-0"></span>
@@ -770,7 +877,7 @@
       Ready to clear<br>your backlog?
     </h2>
     <p class="text-[16px] text-slate-400 mb-10 leading-relaxed max-w-lg mx-auto">
-      Sign in with your work email. Your private pipeline is waiting — and the AI is ready to learn your thesis.
+      Sign in with your work email. Your pipeline is waiting.
     </p>
     <a
       href="https://vc-analysis.vercel.app"
@@ -780,7 +887,7 @@
       Try Deal Flow Intelligence
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"/></svg>
     </a>
-    <p class="mt-5 text-[12.5px] text-slate-600">Magic link sign-in · No password · Free to use</p>
+    <p class="mt-5 text-[12.5px] text-slate-600">Free to use</p>
   </div>
 </section>
 
@@ -878,7 +985,7 @@
   if (vaultFeed) vaultIO.observe(vaultFeed)
 
   // ── Typing animation ───────────────────────────────────────────────────────
-  const NOTE_TEXT = 'CTO has a photonics PhD from ETH Zurich and previously led hardware R&D at a Unit 8200 spinout. Strong execution profile — recommend bumping team score.'
+  const NOTE_TEXT = 'CTO has a photonics PhD from ETH Zurich and previously led hardware R&D at a Unit 8200 spinout. Strong execution profile.'
   let typingStarted = false
   const typingIO = new IntersectionObserver((entries) => {
     entries.forEach(e => {
