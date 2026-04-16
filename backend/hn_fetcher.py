@@ -15,7 +15,7 @@ STARTUP_KEYWORDS = [
     "software", "hardware", "b2b", "data", "cloud", "devtools",
 ]
 
-# Map broad keywords to Elaia sectors
+# Map broad keywords to target sectors
 SECTOR_MAP = [
     (["quantum", "photon", "qubit"], "Quantum"),
     (["biotech", "drug", "therapy", "genomic", "protein", "medical", "clinical", "pharma"], "Biotech"),

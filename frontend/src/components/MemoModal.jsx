@@ -86,7 +86,7 @@ const MEMO_SECTIONS = [
   { key: 'memo_solution',  label: 'Solution',          Icon: LightBulbIcon },
   { key: 'memo_team',      label: 'Team Assessment',   Icon: UserGroupIcon },
   { key: 'memo_traction',  label: 'Traction & Market', Icon: TrendingUpIcon },
-  { key: 'memo_elaia_fit', label: 'Thesis Fit',         Icon: CheckCircleIcon },
+  { key: 'memo_thesis_fit', label: 'Thesis Fit',         Icon: CheckCircleIcon },
   { key: 'memo_red_flags', label: 'Red Flags & Risks', Icon: ExclamationTriangleIcon, redFlags: true },
 ]
 
@@ -606,7 +606,7 @@ export default function MemoModal({ startup: initialStartup, onClose, onUpdated 
                   { key: 'solution',  label: 'Solution',        Icon: LightBulbIcon },
                   { key: 'team',      label: 'Team',            Icon: UserGroupIcon },
                   { key: 'traction',  label: 'Traction',        Icon: TrendingUpIcon },
-                  { key: 'elaia_fit', label: 'Thesis Fit',      Icon: CheckCircleIcon },
+                  { key: 'thesis_fit', label: 'Thesis Fit',      Icon: CheckCircleIcon },
                   { key: 'risks',     label: 'Open Questions',  Icon: ExclamationTriangleIcon, redFlags: true },
                 ]
                 return deepSections.map(s => (

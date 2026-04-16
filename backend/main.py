@@ -97,6 +97,14 @@ def _run_migrations():
             except Exception as e:
                 print(f"[Migration] Warning for {table}.{col}: {e}")
 
+        # Rename legacy vc-branded column if it still exists
+        try:
+            conn.execute(sqlalchemy.text(
+                "ALTER TABLE startup RENAME COLUMN memo_elaia_fit TO memo_thesis_fit"
+            ))
+        except Exception:
+            pass  # already renamed or column doesn't exist
+
 
 @app.on_event("startup")
 def on_startup():
@@ -842,7 +850,7 @@ Problem: {startup.memo_problem or 'N/A'}
 Solution: {startup.memo_solution or 'N/A'}
 Team: {startup.memo_team or 'N/A'}
 Traction: {startup.memo_traction or 'N/A'}
-Thesis Fit: {startup.memo_elaia_fit or 'N/A'}
+Thesis Fit: {startup.memo_thesis_fit or 'N/A'}
 Risks: {startup.memo_red_flags or 'N/A'}"""
 
     messages = [{"role": m.role, "content": m.content} for m in req.history]
@@ -1131,7 +1139,7 @@ def export_pdf(
         content=bytes(pdf_bytes),
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f"attachment; filename=elaia-dealflow-{datetime.now().strftime('%Y%m%d')}.pdf"
+            "Content-Disposition": f"attachment; filename=dealflow-{datetime.now().strftime('%Y%m%d')}.pdf"
         },
     )
 

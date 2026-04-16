@@ -62,7 +62,7 @@ Write a detailed memo in this JSON format. Each section must be 4-6 sentences wi
   "solution": "<Explain the core technical approach. Describe the IP, patents, or proprietary methods. Name 2-3 specific competitors and state the clear differentiation. Identify the defensible moat — 4-6 sentences>",
   "team": "<Profile each founder individually: academic pedigree, prior companies, prior exits, specific domain expertise. Note how the team composition maps to the problem. Identify any team gaps — 4-6 sentences>",
   "traction": "<Describe commercial progress with specifics: customer count, ARR/MRR if known, growth rate, key design wins, LOIs, pilots, or strategic partnerships. Explain what the traction signals about product-market fit — 4-6 sentences>",
-  "elaia_fit": "<State explicitly why this fits the fund thesis. Explain why now and why Elaia is the right lead. Reference comparable portfolio companies or exits. Describe the expected return profile and plausible exit paths — 4-6 sentences>",
+  "thesis_fit": "<State explicitly why this fits the fund thesis. Explain why now and why the fund is the right lead. Reference comparable portfolio companies or exits. Describe the expected return profile and plausible exit paths — 4-6 sentences>",
   "risks": "<Identify the top 3 open diligence questions. For each: state the risk clearly, explain why it matters, and suggest a specific way to answer it (e.g. reference check, technical audit, customer call) — 4-6 sentences>"
 }}"""
 
@@ -85,7 +85,7 @@ Write a structured memo in this JSON format. Each value must be 1-2 sentences on
   "solution": "<technical approach and unique value proposition — 1-2 sentences>",
   "team": "<founding team credentials, experience, and gaps — 1-2 sentences>",
   "traction": "<current traction, customers, revenue, market validation — 1-2 sentences>",
-  "elaia_fit": "<alignment with the investment thesis and why we are the right investor — 1-2 sentences>",
+  "thesis_fit": "<alignment with the investment thesis and why the fund is the right investor — 1-2 sentences>",
   "red_flags": "<top 2 risks or open diligence questions — 1-2 sentences>"
 }}"""
 
@@ -318,7 +318,7 @@ def generate_memo(startup_data: dict, thesis_config: Optional[dict] = None) -> d
                 "memo_solution": None,
                 "memo_team": None,
                 "memo_traction": None,
-                "memo_elaia_fit": None,
+                "memo_thesis_fit": None,
                 "memo_red_flags": None,
             }
 
@@ -327,7 +327,7 @@ def generate_memo(startup_data: dict, thesis_config: Optional[dict] = None) -> d
             "memo_solution": parsed.get("solution", ""),
             "memo_team": parsed.get("team", ""),
             "memo_traction": parsed.get("traction", ""),
-            "memo_elaia_fit": parsed.get("elaia_fit", ""),
+            "memo_thesis_fit": parsed.get("thesis_fit", ""),
             "memo_red_flags": parsed.get("red_flags", ""),
         }
 
@@ -338,7 +338,7 @@ def generate_memo(startup_data: dict, thesis_config: Optional[dict] = None) -> d
             "memo_solution": None,
             "memo_team": None,
             "memo_traction": None,
-            "memo_elaia_fit": None,
+            "memo_thesis_fit": None,
             "memo_red_flags": None,
         }
 
@@ -346,7 +346,7 @@ def generate_memo(startup_data: dict, thesis_config: Optional[dict] = None) -> d
 def generate_deep_memo(startup_data: dict, thesis_config: Optional[dict] = None) -> dict:
     """
     Generate an IC-ready deep dive memo with 4-6 sentences per section.
-    Returns a dict with keys: problem, solution, team, traction, elaia_fit, risks.
+    Returns a dict with keys: problem, solution, team, traction, thesis_fit, risks.
     """
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -396,7 +396,7 @@ def generate_deep_memo(startup_data: dict, thesis_config: Optional[dict] = None)
             "solution": parsed.get("solution", ""),
             "team": parsed.get("team", ""),
             "traction": parsed.get("traction", ""),
-            "elaia_fit": parsed.get("elaia_fit", ""),
+            "thesis_fit": parsed.get("thesis_fit", ""),
             "risks": parsed.get("risks", ""),
         }
 

@@ -46,7 +46,7 @@ class Startup(SQLModel, table=True):
     memo_solution: Optional[str] = None
     memo_team: Optional[str] = None
     memo_traction: Optional[str] = None
-    memo_elaia_fit: Optional[str] = None
+    memo_thesis_fit: Optional[str] = None
     memo_red_flags: Optional[str] = None
 
     # Deep dive memo (JSON string, IC-ready)
@@ -101,7 +101,7 @@ class StartupRead(SQLModel):
     memo_solution: Optional[str]
     memo_team: Optional[str]
     memo_traction: Optional[str]
-    memo_elaia_fit: Optional[str]
+    memo_thesis_fit: Optional[str]
     memo_red_flags: Optional[str]
     deep_memo: Optional[str]
     deep_memo_generated_at: Optional[datetime]

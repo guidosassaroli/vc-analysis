@@ -49,7 +49,7 @@ def _detect_stage(stars: int) -> str:
 
 
 async def fetch_github_startups(max_per_query: int = 5, existing_urls: set = None) -> list[dict]:
-    """Search GitHub for deep tech repos across Elaia sectors."""
+    """Search GitHub for deep tech repos across target sectors."""
     existing_urls = existing_urls or set()
     results = []
     seen_urls: set[str] = set()
