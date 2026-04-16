@@ -297,7 +297,9 @@ def _scrape_hints(html: str, url: str) -> dict:
 _TEAM_SUBPATHS = ['/about', '/team', '/about-us', '/company', '/people', '/founders']
 
 _HTTP_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
 }
 
 
@@ -310,6 +312,34 @@ def _html_to_text(html: str) -> str:
         return extractor.get_text()
     except Exception:
         return ""
+
+
+async def _fetch_with_jina(url: str) -> str:
+    """Fallback fetcher using Jina Reader API — handles JS-rendered sites and anti-bot blocks."""
+    jina_url = f"https://r.jina.ai/{url}"
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(30.0, connect=10.0),
+        follow_redirects=True,
+        headers={"Accept": "text/plain", "X-No-Cache": "true"},
+    ) as client:
+        resp = await client.get(jina_url)
+        resp.raise_for_status()
+        return resp.text.strip()
+
+
+def _friendly_fetch_error(e: Exception) -> str:
+    s = str(e)
+    if "403" in s or "Forbidden" in s:
+        return "This site blocks automated access (HTTP 403). Try pasting the startup's details manually."
+    if "404" in s or "Not Found" in s:
+        return "Page not found (HTTP 404). Check the URL is correct."
+    if "Timeout" in s or "timed out" in s:
+        return "The site took too long to respond. It may be slow or temporarily down."
+    if "SSL" in s or "certificate" in s:
+        return "SSL certificate error on this site."
+    if "Connect" in s or "Name or service" in s:
+        return "Could not connect to this site. Check the URL."
+    return f"Could not fetch page: {e}"
 
 
 async def _fetch_subpage_text(client: httpx.AsyncClient, base_url: str, path: str) -> str:
@@ -463,8 +493,13 @@ async def startup_from_url(
 ):
     url = req.url
 
+    homepage_html = ""
+    homepage_text = ""
+    first_error = None
+    subpage_texts = []
+
     async with httpx.AsyncClient(
-        timeout=httpx.Timeout(10.0, connect=5.0),
+        timeout=httpx.Timeout(20.0, connect=8.0),
         follow_redirects=True,
         headers=_HTTP_HEADERS,
     ) as client:
@@ -473,24 +508,37 @@ async def startup_from_url(
             resp.raise_for_status()
             homepage_html = resp.text
             homepage_text = _html_to_text(homepage_html)
+            subpage_tasks = [_fetch_subpage_text(client, url, path) for path in _TEAM_SUBPATHS]
+            subpage_texts = await asyncio.gather(*subpage_tasks)
         except Exception as e:
-            raise HTTPException(status_code=422, detail=f"Could not fetch page: {e}")
+            first_error = e
 
-        if len(homepage_text) < 100:
-            raise HTTPException(
-                status_code=422,
-                detail="Not enough readable text on this page. It may require JavaScript to render (e.g. Framer, React SPA). Try pasting the startup's details manually."
-            )
+    use_jina = first_error is not None or len(homepage_text) < 100
 
-        subpage_tasks = [_fetch_subpage_text(client, url, path) for path in _TEAM_SUBPATHS]
-        subpage_texts = await asyncio.gather(*subpage_tasks)
+    if use_jina:
+        try:
+            jina_text = await _fetch_with_jina(url)
+            if len(jina_text) < 100:
+                raise HTTPException(status_code=422, detail=(
+                    _friendly_fetch_error(first_error) if first_error else
+                    "Not enough readable content on this page, even after JavaScript rendering. Try pasting the startup's details manually."
+                ))
+            homepage_text = jina_text
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=422, detail=(
+                _friendly_fetch_error(first_error) if first_error else
+                "Not enough readable text on this page. It may require JavaScript to render (e.g. Framer, React SPA). Try pasting the startup's details manually."
+            ))
 
-    hints = _scrape_hints(homepage_html, url)
+    hints = _scrape_hints(homepage_html, url) if homepage_html else {"website": url}
 
     combined_parts = [homepage_text]
-    for sub_text in subpage_texts:
-        if sub_text and sub_text[:200] != homepage_text[:200]:
-            combined_parts.append(sub_text)
+    if not use_jina:
+        for sub_text in subpage_texts:
+            if sub_text and sub_text[:200] != homepage_text[:200]:
+                combined_parts.append(sub_text)
     combined_text = ' '.join(combined_parts)
 
     loop = asyncio.get_running_loop()

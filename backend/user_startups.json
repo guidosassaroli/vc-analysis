@@ -92,5 +92,19 @@
     "website": "https://www.gethisy.com/",
     "source": "manual",
     "hn_url": "https://www.gethisy.com/"
+  },
+  {
+    "name": "Helsing",
+    "description": "Helsing is a defense AI company developing artificial intelligence software for European security and defense applications.",
+    "sector": "AI/ML",
+    "stage": "Unknown",
+    "country": "Germany",
+    "founded_year": 2021,
+    "founders": null,
+    "funding": null,
+    "linkedin_url": null,
+    "website": "https://helsing.ai",
+    "source": "manual",
+    "hn_url": "https://helsing.ai"
   }
 ]
